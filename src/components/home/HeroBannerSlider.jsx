@@ -1,0 +1,161 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { ChevronLeft, ChevronRight, ShieldCheck, MapPin, Sparkles } from 'lucide-react';
+
+const SLIDES = [
+  {
+    id: 1,
+    badgeType: 'live',
+    badgeText: 'LINE MINI APP • ON CAMPUS',
+    title: 'SPU Student Market',
+    subtitle: 'ตลาดนัดชาวเด็กแนว ศรีปทุม ช้อป-ส่งต่อปลอดภัยภายในมหาลัย',
+    theme: 'theme-magenta',
+    ctaText: 'ดูสินค้าทั้งหมด',
+  },
+  {
+    id: 2,
+    badgeType: 'pickup',
+    badgeText: '📍 ON-CAMPUS PICKUP • ฟรีค่าส่ง',
+    title: 'นัดรับฟรีในแคมปัส SPU',
+    subtitle: 'สะดวก ปลอดภัย นัดรับง่ายที่ตึก 11, อาคาร 9, และโรงอาหารกลาง',
+    theme: 'theme-indigo',
+    ctaText: 'ดูจุดนัดรับยอดนิยม',
+  },
+  {
+    id: 3,
+    badgeType: 'verified',
+    badgeText: '🛡️ SPU VERIFIED • ปลอดภัย 100%',
+    title: 'ช้อปมั่นใจ ยืนยันตัวตน @spumail.net',
+    subtitle: 'ผู้ซื้อและผู้ขายผ่านการตรวจสอบรหัสนักศึกษาจริง ไร้กังวลเรื่องการโกง',
+    theme: 'theme-teal',
+    ctaText: 'ยืนยันตัวตนเลย',
+  },
+];
+
+export default function HeroBannerSlider({ onNavigateToRegister }) {
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const touchStartX = useRef(0);
+  const touchEndX = useRef(0);
+
+  // Auto-advance slider every 3.8 seconds
+  useEffect(() => {
+    if (isPaused) return;
+
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % SLIDES.length);
+    }, 3800);
+
+    return () => clearInterval(timer);
+  }, [isPaused]);
+
+  const handlePrev = () => {
+    setCurrentSlide((prev) => (prev === 0 ? SLIDES.length - 1 : prev - 1));
+  };
+
+  const handleNext = () => {
+    setCurrentSlide((prev) => (prev + 1) % SLIDES.length);
+  };
+
+  const handleTouchStart = (e) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchMove = (e) => {
+    touchEndX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    const diff = touchStartX.current - touchEndX.current;
+    if (Math.abs(diff) > 40) {
+      if (diff > 0) {
+        handleNext();
+      } else {
+        handlePrev();
+      }
+    }
+  };
+
+  const handleBannerClick = (slide) => {
+    if (slide.id === 3 && onNavigateToRegister) {
+      onNavigateToRegister();
+    }
+  };
+
+  return (
+    <div
+      className="hero-slider-wrapper"
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      <div className="hero-slider-container">
+        <div
+          className="hero-slider-track"
+          style={{ transform: `translateX(-${currentSlide * 100}%)` }}
+        >
+          {SLIDES.map((slide, index) => (
+            <div
+              key={slide.id}
+              className={`hero-slide-item ${slide.theme}`}
+              onClick={() => handleBannerClick(slide)}
+              role="group"
+              aria-roledescription="slide"
+              aria-label={`${index + 1} of ${SLIDES.length}`}
+            >
+              <div className="slide-content">
+                <div className="slider-badge">
+                  {slide.badgeType === 'live' && <span className="live-pulse-dot" />}
+                  <span>{slide.badgeText}</span>
+                </div>
+
+                <h2 className="slider-title">{slide.title}</h2>
+                <p className="slider-subtitle">{slide.subtitle}</p>
+
+                <div className="slider-cta-tag">
+                  <span>{slide.ctaText}</span>
+                  <span className="cta-arrow">→</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Prev / Next Arrows */}
+        <button
+          type="button"
+          className="slider-nav-btn prev-btn"
+          onClick={handlePrev}
+          aria-label="สไลด์ก่อนหน้า"
+        >
+          <ChevronLeft size={16} strokeWidth={2.5} />
+        </button>
+
+        <button
+          type="button"
+          className="slider-nav-btn next-btn"
+          onClick={handleNext}
+          aria-label="สไลด์ถัดไป"
+        >
+          <ChevronRight size={16} strokeWidth={2.5} />
+        </button>
+      </div>
+
+      {/* Dot Indicators */}
+      <div className="slider-dots-container" role="tablist">
+        {SLIDES.map((slide, index) => (
+          <button
+            key={slide.id}
+            type="button"
+            role="tab"
+            aria-selected={currentSlide === index}
+            aria-label={`ไปที่สไลด์ ${index + 1}`}
+            className={`slider-dot ${currentSlide === index ? 'active' : ''}`}
+            onClick={() => setCurrentSlide(index)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}

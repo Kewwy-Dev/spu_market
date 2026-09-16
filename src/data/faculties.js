@@ -1,0 +1,17 @@
+export const FACULTIES = [
+  { id: 'it', name: 'คณะเทคโนโลยีสารสนเทศ (School of Information Technology)' },
+  { id: 'business', name: 'คณะบริหารธุรกิจ (School of Business Administration)' },
+  { id: 'comm-arts', name: 'คณะนิเทศศาสตร์ (School of Communication Arts)' },
+  { id: 'law', name: 'คณะนิติศาสตร์ (School of Law)' },
+  { id: 'accountancy', name: 'คณะบัญชี (School of Accountancy)' },
+  { id: 'engineering', name: 'คณะวิศวกรรมศาสตร์ (School of Engineering)' },
+  { id: 'architecture', name: 'คณะสถาปัตยกรรมศาสตร์ (School of Architecture)' },
+  { id: 'liberal-arts', name: 'คณะศิลปศาสตร์ (School of Liberal Arts)' },
+  { id: 'tourism', name: 'วิทยาลัยการท่องเที่ยวและการบริการ (College of Tourism & Hospitality)' },
+  { id: 'aviation', name: 'วิทยาลัยการบินและคมนาคม (College of Aviation & Transportation)' },
+  { id: 'logistics', name: 'วิทยาลัยโลจิสติกส์และซัพพลายเชน (College of Logistics & Supply Chain)' },
+  { id: 'international', name: 'วิทยาลัยนานาชาติศรีปทุม (SPUIC)' },
+  { id: 'music', name: 'วิทยาลัยดนตรีและศิลปะการแสดง' },
+  { id: 'interdisciplinary', name: 'คณะสหวิทยาการ เทคโนโลยีและนวัตกรรม' },
+  { id: 'graduate', name: 'บัณฑิตวิทยาลัย / ศูนย์วิจัย' },
+];
