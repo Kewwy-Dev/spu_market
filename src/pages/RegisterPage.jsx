@@ -11,7 +11,7 @@ import SubmitSection from '../components/SubmitSection';
 import SuccessModal from '../components/SuccessModal';
 import { validateRegistrationForm } from '../utils/validation';
 
-export default function RegisterPage({ onBack }) {
+export default function RegisterPage({ onBack, onGoToSeller }) {
   const [memberType, setMemberType] = useState('student');
 
   const [formData, setFormData] = useState({
@@ -101,7 +101,11 @@ export default function RegisterPage({ onBack }) {
 
   const handleCloseModal = () => {
     setSubmittedData(null);
-    onBack();
+    if (onGoToSeller) {
+      onGoToSeller();
+    } else {
+      onBack();
+    }
   };
 
   return (
@@ -163,16 +167,16 @@ export default function RegisterPage({ onBack }) {
             required
           />
 
-          {/* อีเมลมหาวิทยาลัย (@spu.ac.th) */}
+          {/* อีเมลมหาวิทยาลัย (@spumail.net) */}
           <FormField
             id="email"
-            label="อีเมลมหาวิทยาลัย (@spu.ac.th)"
+            label="อีเมลมหาวิทยาลัย (@spumail.net)"
             required
             icon={Mail}
             type="email"
             value={formData.email}
             onChange={(e) => handleInputChange('email', e.target.value)}
-            placeholder="sommut.suk@spu.ac.th"
+            placeholder="sommut.suk@spumail.net"
             helperText="ⓘ สำหรับรับรหัส OTP ยืนยันสถานะปัจจุบัน"
             error={errors.email}
           />
@@ -216,7 +220,11 @@ export default function RegisterPage({ onBack }) {
 
       {/* Success Modal */}
       {submittedData && (
-        <SuccessModal data={submittedData} onClose={handleCloseModal} />
+        <SuccessModal
+          data={submittedData}
+          onClose={handleCloseModal}
+          onGoToSeller={handleCloseModal}
+        />
       )}
     </div>
   );

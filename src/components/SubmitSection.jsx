@@ -24,7 +24,7 @@ export default function SubmitSection({ isSubmitting = false }) {
 
       <div className="approval-badge">
         <Zap size={14} className="zap-icon" />
-        <span>อนุมัติทันทีผ่านอีเมลมหาวิทยาลัย (@spu.ac.th)</span>
+        <span>อนุมัติทันทีผ่านอีเมลมหาวิทยาลัย (@spumail.net)</span>
       </div>
     </div>
   );

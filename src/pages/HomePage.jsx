@@ -14,8 +14,10 @@ import { PRODUCTS } from '../data/products';
 export default function HomePage({
   onNavigateToRegister,
   onNavigateToLogin,
+  onNavigateToSeller,
   currentUser,
   onLogout,
+  products = PRODUCTS,
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
@@ -24,7 +26,7 @@ export default function HomePage({
 
   // Filter products based on search, category, and location
   const filteredProducts = useMemo(() => {
-    return PRODUCTS.filter((item) => {
+    return products.filter((item) => {
       // Search filter
       const matchesSearch = !searchQuery.trim() ||
         item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -43,19 +45,16 @@ export default function HomePage({
 
       return matchesSearch && matchesCategory && matchesLocation;
     });
-  }, [searchQuery, activeCategory, activeLocation]);
+  }, [products, searchQuery, activeCategory, activeLocation]);
 
   const handleContactSeller = (product) => {
     alert(`กำลังเชื่อมต่อไปยัง LINE / ช่องทางแชทของ ${product.seller} เพื่อพูดคุยและนัดรับที่ ${product.location}`);
   };
 
   const handleSellClick = () => {
-    if (!currentUser) {
-      alert('สำหรับลงขายสินค้า: กรุณาเข้าสู่ระบบด้วยอีเมล @spumail.net หรือยืนยันตัวตนนักศึกษา SPU ก่อน');
-      onNavigateToLogin();
-      return;
+    if (onNavigateToSeller) {
+      onNavigateToSeller();
     }
-    alert(`สวัสดีคุณ ${currentUser.displayName}: ระบบพร้อมเปิดฟอร์มลงขายสินค้าให้คุณแล้ว!`);
   };
 
   const handleNotification = () => {

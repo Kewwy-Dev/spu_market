@@ -36,6 +36,7 @@ export default function ProductDetailModal({ product, onClose, onContactSeller }
           </div>
 
           <h3 className="modal-product-title">{product.title}</h3>
+          {product.description && <p className="modal-product-description">{product.description}</p>}
 
           <div className="modal-meta-chips">
             <div className="meta-chip">

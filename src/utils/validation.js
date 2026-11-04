@@ -22,11 +22,11 @@ export function validateRegistrationForm(formData, memberType) {
     errors.faculty = 'กรุณาเลือกคณะ / ภาควิชาของคุณ';
   }
 
-  // อีเมลมหาวิทยาลัย (@spu.ac.th)
+  // อีเมลมหาวิทยาลัย (@spumail.net)
   if (!formData.email) {
     errors.email = 'กรุณากรอกอีเมลมหาวิทยาลัย';
-  } else if (!/^[^\s@]+@spu\.ac\.th$/i.test(formData.email.trim())) {
-    errors.email = 'อีเมลต้องลงท้ายด้วย @spu.ac.th เท่านั้น';
+  } else if (!/^[^\s@]+@spumail\.net$/i.test(formData.email.trim())) {
+    errors.email = 'อีเมลต้องลงท้ายด้วย @spumail.net เท่านั้น';
   }
 
   // ช่องทางติดต่อ LINE ID หรือ เบอร์โทรศัพท์

@@ -1,8 +1,16 @@
 import React from 'react';
 import { CheckCircle2, ShieldCheck, X } from 'lucide-react';
 
-export default function SuccessModal({ data, onClose }) {
+export default function SuccessModal({ data, onClose, onGoToSeller }) {
   if (!data) return null;
+
+  const handleProceed = () => {
+    if (onGoToSeller) {
+      onGoToSeller();
+    } else {
+      onClose();
+    }
+  };
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -22,7 +30,7 @@ export default function SuccessModal({ data, onClose }) {
 
         <h3 className="modal-title">ส่งข้อมูลยืนยันตัวตนสำเร็จ!</h3>
         <p className="modal-desc">
-          ระบบได้รับข้อมูลของท่านเรียบร้อยแล้ว เจ้าหน้าที่หรือระบบอัตโนมัติจะส่งการยืนยันไปยังอีเมลมหาวิทยาลัย
+          ระบบได้รับข้อมูลของท่านเรียบร้อยแล้ว และเปิดสิทธิ์ร้านค้าผู้ขาย SPU Market ให้ทันที
         </p>
 
         <div className="modal-info-summary">
@@ -52,15 +60,15 @@ export default function SuccessModal({ data, onClose }) {
 
         <div className="modal-status-badge">
           <ShieldCheck size={16} />
-          <span>สถานะ: รอการตรวจสอบเอกสารและเปิดสิทธิ์ซื้อขาย</span>
+          <span>สถานะ: อนุมัติสิทธิ์เข้าสู่ระบบจัดการร้านค้าเรียบร้อย</span>
         </div>
 
         <button
           type="button"
           className="modal-submit-btn"
-          onClick={onClose}
+          onClick={handleProceed}
         >
-          ตกลง
+          ไปที่หน้าจัดการร้านค้า & โปรไฟล์ผู้ขาย
         </button>
       </div>
     </div>

@@ -1,7 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, ShieldCheck, MapPin, Sparkles } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ShieldCheck, MapPin, Sparkles, Tag, Flame } from 'lucide-react';
 
 const SLIDES = [
+  {
+    id: 0,
+    badgeType: 'new',
+    badgeText: '✨ ใหม่ล่าสุด • เพิ่งลงขาย',
+    title: 'สินค้าลงขายล่าสุด 🛍️',
+    subtitle: 'ไม่พลาดทุกชิ้นใหม่! สินค้ามือสองและของใหม่ป้ายแดงจากนักศึกษา SPU',
+    theme: 'theme-rose',
+    ctaText: 'ดูสินค้าใหม่ทั้งหมด',
+  },
   {
     id: 1,
     badgeType: 'live',
@@ -105,15 +114,28 @@ export default function HeroBannerSlider({ onNavigateToRegister }) {
               aria-label={`${index + 1} of ${SLIDES.length}`}
             >
               <div className="slide-content">
-                <div className="slider-badge">
+                <div className={`slider-badge ${slide.theme === 'theme-rose' ? 'slider-badge-rose' : ''}`}>
                   {slide.badgeType === 'live' && <span className="live-pulse-dot" />}
+                  {slide.badgeType === 'new' && <span className="new-pulse-dot" />}
                   <span>{slide.badgeText}</span>
                 </div>
 
-                <h2 className="slider-title">{slide.title}</h2>
-                <p className="slider-subtitle">{slide.subtitle}</p>
+                <h2 className={`slider-title ${slide.theme === 'theme-rose' ? 'slider-title-rose' : ''}`}>
+                  {slide.title}
+                </h2>
+                <p className={`slider-subtitle ${slide.theme === 'theme-rose' ? 'slider-subtitle-rose' : ''}`}>
+                  {slide.subtitle}
+                </p>
 
-                <div className="slider-cta-tag">
+                {slide.theme === 'theme-rose' && (
+                  <div className="rose-sparkles">
+                    <Sparkles size={14} className="sparkle-icon" />
+                    <Sparkles size={10} className="sparkle-icon sparkle-sm" />
+                    <Flame size={12} className="sparkle-icon" />
+                  </div>
+                )}
+
+                <div className={`slider-cta-tag ${slide.theme === 'theme-rose' ? 'slider-cta-rose' : ''}`}>
                   <span>{slide.ctaText}</span>
                   <span className="cta-arrow">→</span>
                 </div>
