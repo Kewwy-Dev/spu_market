@@ -8,21 +8,26 @@ import LocationFilter from '../components/home/LocationFilter';
 import ProductGrid from '../components/home/ProductGrid';
 import TrustNotice from '../components/home/TrustNotice';
 import FloatingSellButton from '../components/home/FloatingSellButton';
-import ProductDetailModal from '../components/home/ProductDetailModal';
 import { PRODUCTS } from '../data/products';
+import { ProductGridSkeleton, SkeletonReveal } from '../components/spectrumui/skeleton-reveal';
 
 export default function HomePage({
   onNavigateToRegister,
   onNavigateToLogin,
   onNavigateToSeller,
+  onNavigateToProducts,
+  onSelectProduct,
   currentUser,
   onLogout,
   products = PRODUCTS,
+  productsUpdatedAt = null,
+  productError = '',
+  isLoadingProducts = false,
+  notificationCount = 0,
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
   const [activeLocation, setActiveLocation] = useState('all');
-  const [selectedProduct, setSelectedProduct] = useState(null);
 
   // Filter products based on search, category, and location
   const filteredProducts = useMemo(() => {
@@ -37,7 +42,7 @@ export default function HomePage({
       const matchesCategory = activeCategory === 'all' || item.category === activeCategory;
 
       // Location filter
-      const matchesLocation = activeLocation === 'all' ||
+      const matchesLocation = activeLocation === 'all' || item.locationSlug === activeLocation ||
         (activeLocation === 'b11' && item.building.includes('ตึก 11')) ||
         (activeLocation === 'b9' && item.building.includes('อาคาร 9')) ||
         (activeLocation === 'b1' && item.building.includes('อาคาร 1')) ||
@@ -47,7 +52,7 @@ export default function HomePage({
     });
   }, [products, searchQuery, activeCategory, activeLocation]);
 
-  const handleContactSeller = (product) => {
+  const _handleContactSeller = (product) => {
     alert(`กำลังเชื่อมต่อไปยัง LINE / ช่องทางแชทของ ${product.seller} เพื่อพูดคุยและนัดรับที่ ${product.location}`);
   };
 
@@ -67,9 +72,21 @@ export default function HomePage({
       <AppHeader
         onNotificationClick={handleNotification}
         currentUser={currentUser}
+        notificationCount={notificationCount}
         onNavigateToLogin={onNavigateToLogin}
         onLogout={onLogout}
       />
+
+      {(productError || isLoadingProducts) && (
+        <div className={`market-data-notice ${productError ? 'is-error' : ''}`} role={productError ? 'alert' : 'status'}>
+          {productError || 'Loading marketplace listings...'}
+        </div>
+      )}
+      {!productError && !isLoadingProducts && products.length === 0 && (
+        <div className="market-data-notice" role="status">
+          No listings are available yet. Confirm that `supabase/seed.sql` has been run in the Supabase SQL Editor.
+        </div>
+      )}
 
       {/* 2. Standalone Search Bar — sticky below header, full width */}
       <SearchBar
@@ -90,6 +107,8 @@ export default function HomePage({
           onActionSelect={(action) => {
             if (action === 'seller') {
               handleSellClick();
+            } else if (action === 'buy') {
+              onNavigateToProducts?.();
             } else if (action === 'help') {
               alert('ศูนย์ช่วยเหลือ SPU Market: ติดต่อประสานงานแอดมินกลุ่ม หรือแจ้งข้อพิพาท โทร 02-579-1111 หรือ LINE Official @spumarket');
             }
@@ -109,10 +128,9 @@ export default function HomePage({
         />
 
         {/* 7. Products Feed */}
-        <ProductGrid
-          products={filteredProducts}
-          onSelectProduct={setSelectedProduct}
-        />
+        <SkeletonReveal loading={isLoadingProducts} skeleton={<ProductGridSkeleton count={4} />}>
+          <ProductGrid products={filteredProducts} updatedAt={productsUpdatedAt} onSelectProduct={onSelectProduct} />
+        </SkeletonReveal>
 
         {/* 8. Trust Guarantee Banner */}
         <TrustNotice onNavigateToRegister={onNavigateToRegister} />
@@ -121,12 +139,6 @@ export default function HomePage({
       {/* 9. Floating Sell Button */}
       <FloatingSellButton onClick={handleSellClick} />
 
-      {/* 10. Product Detail Modal */}
-      <ProductDetailModal
-        product={selectedProduct}
-        onClose={() => setSelectedProduct(null)}
-        onContactSeller={handleContactSeller}
-      />
     </div>
   );
 }

@@ -1,54 +1,24 @@
 export function validateRegistrationForm(formData, memberType) {
   const errors = {};
 
-  // ชื่อ-นามสกุล
-  if (!formData.fullName || formData.fullName.trim().length < 3) {
-    errors.fullName = 'กรุณากรอกชื่อ-นามสกุล ภาษาไทยให้ถูกต้อง';
+  if (!formData.fullName?.trim() || formData.fullName.trim().length < 3) {
+    errors.fullName = 'กรุณากรอกชื่อ-สกุลให้ครบถ้วน';
   }
 
-  // รหัสนักศึกษา / รหัสบุคลากร
   if (memberType === 'student') {
-    if (!formData.studentId || !/^\d{8}$/.test(formData.studentId.trim())) {
-      errors.studentId = 'กรุณากรอกรหัสนักศึกษาให้ครบ 8 หลัก (เฉพาะตัวเลข)';
-    }
-  } else {
-    if (!formData.studentId || formData.studentId.trim().length < 4) {
-      errors.studentId = 'กรุณากรอกรหัสประจำตัวอาจารย์/บุคลากร';
-    }
+    if (!/^\d{8}$/.test(formData.studentId?.trim() || '')) errors.studentId = 'รหัสนักศึกษาต้องมีตัวเลข 8 หลัก';
+  } else if (!formData.studentId?.trim() || formData.studentId.trim().length < 4) {
+    errors.studentId = 'กรุณากรอกรหัสอาจารย์หรือบุคลากร';
   }
 
-  // คณะ / ภาควิชา
-  if (!formData.faculty) {
-    errors.faculty = 'กรุณาเลือกคณะ / ภาควิชาของคุณ';
-  }
+  if (!formData.faculty) errors.faculty = 'กรุณาเลือกคณะ / ภาควิชา';
 
-  // อีเมลมหาวิทยาลัย (@spumail.net)
-  if (!formData.email) {
-    errors.email = 'กรุณากรอกอีเมลมหาวิทยาลัย';
-  } else if (!/^[^\s@]+@spumail\.net$/i.test(formData.email.trim())) {
-    errors.email = 'อีเมลต้องลงท้ายด้วย @spumail.net เท่านั้น';
-  }
+  if (!formData.email) errors.email = 'กรุณากรอกอีเมลมหาวิทยาลัย';
+  else if (!/^[^\s@]+@spumail\.net$/i.test(formData.email.trim())) errors.email = 'อีเมลต้องลงท้ายด้วย @spumail.net';
 
-  // ช่องทางติดต่อ LINE ID หรือ เบอร์โทรศัพท์
-  if (!formData.contact || formData.contact.trim().length < 3) {
-    errors.contact = 'กรุณากรอก LINE ID หรือเบอร์โทรศัพท์ที่ติดต่อได้';
-  }
+  if (!formData.contact?.trim() || formData.contact.trim().length < 3) errors.contact = 'กรุณากรอกช่องทางติดต่อ';
+  if (!formData.consent1) errors.consent1 = 'กรุณายินยอมให้ตรวจสอบสถานะนักศึกษาหรือบุคลากร';
+  if (!formData.consent2) errors.consent2 = 'กรุณายอมรับข้อกำหนดการซื้อขาย';
 
-  // รูปภาพบัตร
-  if (!formData.idCardImage) {
-    errors.idCardImage = 'กรุณาอัปโหลดรูปภาพบัตรเพื่อยืนยันตัวตน';
-  }
-
-  // PDPA Consent
-  if (!formData.consent1) {
-    errors.consent1 = 'กรุณายินยอมให้ตรวจสอบสถานะกับระบบมหาวิทยาลัย';
-  }
-  if (!formData.consent2) {
-    errors.consent2 = 'กรุณายอมรับข้อตกลงการซื้อขายที่ปลอดภัย';
-  }
-
-  return {
-    isValid: Object.keys(errors).length === 0,
-    errors,
-  };
+  return { isValid: Object.keys(errors).length === 0, errors };
 }

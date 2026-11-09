@@ -1,428 +1,116 @@
-import React, { useState } from 'react';
-import {
-  Search,
-  MoreVertical,
-  ScanLine,
-  Plus,
-  ShieldCheck,
-  CheckCircle2,
-  MapPin,
-  Pin,
-  Clock,
-  SquarePen,
-  Calendar,
-  GraduationCap,
-  CheckCheck,
-} from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { ArrowLeft, CheckCircle2, Clock, MapPin, Search, ShieldCheck } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { SkeletonBlock, SkeletonReveal } from '../components/spectrumui/skeleton-reveal';
 
-export default function ChatListPage({
-  onSelectChat,
-  onNavigateHome,
-}) {
+const formatChatDate = (value) => {
+  const date = new Date(value);
+  const now = new Date();
+  const sameDay = date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth() && date.getDate() === now.getDate();
+  if (sameDay) return date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+  const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7));
+  const dateStartOfWeek = new Date(date.getFullYear(), date.getMonth(), date.getDate() - ((date.getDay() + 6) % 7));
+  if (dateStartOfWeek.getTime() === startOfWeek.getTime()) return ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'][date.getDay()];
+  if (date.getFullYear() === now.getFullYear()) {
+    const parts = new Intl.DateTimeFormat('th-TH', { day: 'numeric', month: 'short' }).formatToParts(date);
+    return `${parts.find((part) => part.type === 'day')?.value}/${parts.find((part) => part.type === 'month')?.value.replace('.', '')}`;
+  }
+  return date.toLocaleDateString('th-TH', { day: 'numeric', month: 'numeric', year: '2-digit' });
+};
+
+const getMessagePreview = (message) => message?.message_type === 'image' ? 'ส่งรูปภาพ' : message?.message_text || 'เริ่มการสนทนา';
+const conversationCache = new Map();
+
+export default function ChatListPage({ currentUser, onSelectChat, onNavigateHome }) {
+  const cacheKey = currentUser?.id || 'guest';
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
+  const [conversations, setConversations] = useState(() => conversationCache.get(cacheKey) || []);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(() => !conversationCache.has(cacheKey));
 
-  const onlineFriends = [
-    { id: 'fah', name: 'น้องฟ้า', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80', online: true },
-    { id: 'nat', name: 'พี่นัท ICT', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80', online: true },
-    { id: 'krit', name: 'Krit_SPU', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80', online: true },
-    { id: 'mild', name: 'น้องมายด์', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80', online: false },
-  ];
+  useEffect(() => {
+    if (!currentUser?.id || !supabase) { setLoading(false); return undefined; }
+    let active = true;
+    const load = async () => {
+      const { data, error: queryError } = await supabase.from('conversations')
+        .select('id,buyer_id,seller_id,product_id,updated_at,products(title,price,pickup_locations(location_name),product_images(image_url,display_order))')
+        .or(`buyer_id.eq.${currentUser.id},seller_id.eq.${currentUser.id}`)
+        .order('updated_at', { ascending: false });
+      if (queryError) { if (active) setError(queryError.message); setLoading(false); return; }
+      const rows = data || [];
+      const ids = rows.map((row) => row.id);
+      let latestByRoom = new Map();
+      if (ids.length) {
+        const { data: latestMessages, error: messagesError } = await supabase.from('messages').select('conversation_id,sender_id,message_text,message_type,is_read,created_at').in('conversation_id', ids).order('created_at', { ascending: false });
+        if (messagesError) { if (active) setError(messagesError.message); }
+        (latestMessages || []).forEach((message) => {
+          const summary = latestByRoom.get(message.conversation_id) || { latest: null, unreadCount: 0 };
+          if (!summary.latest) summary.latest = message;
+          if (message.sender_id !== currentUser.id && !message.is_read) summary.unreadCount += 1;
+          latestByRoom.set(message.conversation_id, summary);
+        });
+      }
+      let sellerNames = new Map();
+      if (rows.length) {
+        const { data: ownProducts } = await supabase.from('marketplace_products').select('id,seller_name').in('id', rows.map((row) => row.product_id));
+        sellerNames = new Map((ownProducts || []).map((row) => [row.id, row.seller_name]));
+      }
+      const displayNamesByRoom = new Map();
+      if (rows.length) {
+        const participantResults = await Promise.all(rows.map(async (row) => {
+          const { data: profiles, error: profileError } = await supabase.rpc('conversation_participant_display_names', { p_conversation_id: row.id });
+          if (profileError) return [row.id, null];
+          const otherUserId = row.seller_id === currentUser.id ? row.buyer_id : row.seller_id;
+          return [row.id, profiles?.find((profile) => profile.user_id === otherUserId)?.display_name || null];
+        }));
+        participantResults.forEach(([roomId, displayName]) => displayNamesByRoom.set(roomId, displayName));
+      }
+      if (active) setConversations((previous) => {
+        const next = rows.map((row) => ({
+        ...row,
+        productTitle: row.products?.title || 'สินค้าซื้อขาย',
+        price: row.products?.price,
+        location: row.products?.pickup_locations?.location_name,
+        name: displayNamesByRoom.get(row.id) || (row.seller_id === currentUser.id ? 'SPU Market' : (sellerNames.get(row.product_id) || 'SPU Market')),
+        roleLabel: row.seller_id === currentUser.id ? 'ผู้ซื้อ' : 'ผู้ขาย',
+        image: row.products?.product_images?.slice().sort((a, b) => a.display_order - b.display_order)[0]?.image_url,
+        unreadCount: latestByRoom.get(row.id)?.unreadCount || 0,
+        lastMessage: (() => {
+          const summary = latestByRoom.get(row.id);
+          if (summary?.latest?.sender_id === currentUser.id) return `คุณ: ${getMessagePreview(summary.latest)}`;
+          if (summary?.unreadCount) return `ข้อความใหม่ ${summary.unreadCount} ข้อความ`;
+          return getMessagePreview(summary?.latest);
+        })(),
+        }));
+        conversationCache.set(cacheKey, next);
+        return next;
+      });
+      setLoading(false);
+    };
+    void load();
+    const channel = supabase.channel(`chat-list:${currentUser.id}`).on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => { void load(); }).subscribe();
+    return () => { active = false; void supabase.removeChannel(channel); };
+  }, [currentUser?.id]);
 
-  const chatList = [
-    {
-      id: 'fah',
-      name: 'น้องฟ้า (นิเทศฯ)',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-      online: true,
-      verified: true,
-      pinned: true,
-      time: '13:48',
-      pickupBadge: 'นัดรับ 14:00',
-      productName: 'iPad Air 5 64GB Wi-Fi Space Grey',
-      productThumb: 'https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=120&auto=format&fit=crop&q=80',
-      lastMessage: 'สวัสดีค่ะ สภาพ 98% ไร้รอยตกหล่น...',
-      unreadCount: 1,
-      category: 'trading',
-    },
-    {
-      id: 'krit',
-      name: 'Krit_SPU',
-      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
-      online: true,
-      verified: true,
-      customerBadge: 'ลูกค้าคุณ',
-      time: '09:15',
-      productName: 'ชีทสรุป ENG101 ข้อสอบ... (ฉบับส่งสำเร็จแล้ว)',
-      productThumb: 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=120&auto=format&fit=crop&q=80',
-      lastMessage: 'โอนเงินเรียบร้อยแล้วครับ รบกวนส่งไฟล์ซี...',
-      unreadCount: 2,
-      category: 'trading',
-    },
-    {
-      id: 'nat',
-      name: 'พี่นัท ICT',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-      online: false,
-      seniorBadge: 'รุ่นพี่ SPU',
-      time: 'เมื่อวาน',
-      productName: 'เสื้อช็อป SPU ไซส์ L (สีกรมท่า สภาพใหม่)',
-      productThumb: 'https://images.unsplash.com/photo-1578932750294-f5075e85f44a?w=120&auto=format&fit=crop&q=80',
-      lastMessage: 'พี่เอาเสื้อช็อปไปซักรีดให้แล้วนะครับ พรุ่งนี้...',
-      isRead: true,
-      category: 'friends',
-    },
-    {
-      id: 'mild',
-      name: 'น้องมายด์ (สถาปัตย์ ปี 2)',
-      avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80',
-      online: false,
-      time: '2 วันที่แล้ว',
-      productName: 'ชุดโต๊ะดราฟต์ไฟ A2 พับได้ ปรับระดับได้',
-      productThumb: 'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?w=120&auto=format&fit=crop&q=80',
-      offerPrice: 'ยื่น ฿850',
-      lastMessage: 'พี่ยังลดราคาได้อีกนิดหน่อยไหมคะ...',
-      category: 'trading',
-    },
-    {
-      id: 'official',
-      name: 'SPU Market Official',
-      avatar: null,
-      isOfficial: true,
-      verified: true,
-      time: '3 วันที่แล้ว',
-      isOfficialNotice: true,
-      productName: 'ประกาศทางการจากระบบแคมปัส',
-      lastMessage: 'ยืนยันตัวตนสำเร็จ! นศ. พร้อมใช้งานแลกเปลี่ยนสินค้...',
-      isRead: true,
-      category: 'all',
-    },
-  ];
-
-  const filteredChats = chatList.filter((chat) => {
-    const matchesSearch = !searchQuery.trim() ||
-      chat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      chat.lastMessage.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (chat.productName && chat.productName.toLowerCase().includes(searchQuery.toLowerCase()));
-
-    if (activeCategory === 'friends') return matchesSearch && (chat.category === 'friends' || chat.seniorBadge);
-    if (activeCategory === 'trading') return matchesSearch && chat.category === 'trading';
-    if (activeCategory === 'unread') return matchesSearch && (chat.unreadCount && chat.unreadCount > 0);
-    return matchesSearch;
+  const visibleConversations = conversations.filter((conversation) => {
+    const searchMatch = `${conversation.name || ''} ${conversation.productTitle || ''} ${conversation.location || ''}`.toLocaleLowerCase('th-TH').includes(searchQuery.trim().toLocaleLowerCase('th-TH'));
+    return searchMatch && (activeCategory !== 'trading' || Boolean(conversation.product_id));
   });
-
-  return (
-    <div className="chat-list-page-container">
-      {/* 1. Header */}
-      <header className="chat-main-header">
-        <div className="chat-header-top-row">
-          <div
-            className="chat-brand-status"
-            onClick={onNavigateHome}
-            style={{ cursor: 'pointer' }}
-            title="กลับหน้าหลัก"
-          >
-            <span className="online-indicator-dot" />
-            <span className="brand-label">SPU Market</span>
-          </div>
-
-          <div className="chat-hub-chip">
-            <span>อาคาร 11 Hub</span>
-          </div>
-        </div>
-
-        <div className="chat-header-nav-row">
-          <div className="chat-title-group">
-            <h1>Chats</h1>
-            <span className="chat-unread-total-badge">3</span>
-          </div>
-
-          <div className="chat-header-actions">
-            <button
-              type="button"
-              className="chat-head-icon-btn"
-              title="ค้นหา"
-              onClick={() => {}}
-            >
-              <Search size={19} />
-            </button>
-            <button
-              type="button"
-              className="chat-head-icon-btn"
-              title="สร้างแชทใหม่"
-              onClick={() => alert('สร้างแชทใหม่: เลือกเพื่อนนักศึกษาหรือร้านค้าใน SPU')}
-            >
-              <SquarePen size={19} />
-            </button>
-            <button
-              type="button"
-              className="chat-head-icon-btn"
-              title="ตัวเลือกเพิ่มเติม"
-              onClick={() => alert('ตัวเลือกแชท: จัดการข้อความที่ซ่อนไว้')}
-            >
-              <MoreVertical size={19} />
-            </button>
-          </div>
-        </div>
-
-        {/* 2. Search Box */}
-        <div className="chat-search-wrap">
-          <Search size={16} className="chat-search-icon" />
-          <input
-            type="text"
-            className="chat-search-input"
-            placeholder="ค้นหาเพื่อน แชท หรือสินค้าที่คุยไว้..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          <button
-            type="button"
-            className="chat-scan-btn"
-            title="สแกน QR"
-            onClick={() => alert('สแกน QR Code เพื่อเปิดแชทกับเพื่อน')}
-          >
-            <ScanLine size={16} />
-          </button>
-        </div>
-      </header>
-
-      {/* 3. Online Stories Row */}
-      <section className="chat-stories-section">
-        <div className="stories-header">
-          <div className="stories-title-wrap">
-            <span>เพื่อนในมอที่ออนไลน์</span>
-            <span className="online-green-dot" />
-          </div>
-          <button
-            type="button"
-            className="stories-view-all-link"
-            onClick={() => alert('เพื่อนใน SPU ที่ออนไลน์อยู่ทั้งหมด 18 คน')}
-          >
-            ดูทั้งหมด (18)
-          </button>
-        </div>
-
-        <div className="stories-scroll-container">
-          {/* Your Story item */}
-          <div
-            className="story-item"
-            onClick={() => alert('เพิ่มสตอรี่สินค้าหรือสถานะนัดรับของคุณ')}
-          >
-            <div className="story-avatar-wrap story-add-wrap">
-              <Plus size={18} className="story-add-icon" />
-            </div>
-            <span className="story-name">สตอรี่คุณ</span>
-          </div>
-
-          {/* Friends Stories */}
-          {onlineFriends.map((friend) => (
-            <div
-              key={friend.id}
-              className="story-item"
-              onClick={() => onSelectChat(friend.id)}
-            >
-              <div className="story-avatar-wrap">
-                <img src={friend.avatar} alt={friend.name} className="story-avatar-img" />
-                {friend.online && <span className="story-online-dot" />}
-              </div>
-              <span className="story-name">{friend.name}</span>
-            </div>
-          ))}
-
-          {/* Building 11 Hub item */}
-          <div
-            className="story-item"
-            onClick={() => alert('ตึก 11 Hub: จุดนัดพบยอดนิยมของนักศึกษา SPU มีกล้องวงจรปิด')}
-          >
-            <div className="story-avatar-wrap story-hub-wrap">
-              <MapPin size={18} />
-            </div>
-            <span className="story-name">ตึก 11 Hub</span>
-          </div>
-        </div>
-      </section>
-
-      {/* 4. Filter Tabs */}
-      <div className="chat-filter-tabs">
-        <button
-          type="button"
-          className={`chat-tab-pill ${activeCategory === 'all' ? 'active' : ''}`}
-          onClick={() => setActiveCategory('all')}
-        >
-          ทั้งหมด
-        </button>
-        <button
-          type="button"
-          className={`chat-tab-pill ${activeCategory === 'friends' ? 'active' : ''}`}
-          onClick={() => setActiveCategory('friends')}
-        >
-          เพื่อนในมอ 4
-        </button>
-        <button
-          type="button"
-          className={`chat-tab-pill ${activeCategory === 'trading' ? 'active' : ''}`}
-          onClick={() => setActiveCategory('trading')}
-        >
-          ซื้อ-ขาย 3
-        </button>
-        <button
-          type="button"
-          className={`chat-tab-pill ${activeCategory === 'unread' ? 'active' : ''}`}
-          onClick={() => setActiveCategory('unread')}
-        >
-          <span className="unread-dot-inline" />
-          ยังไม่อ่าน
-        </button>
+  return <section className="chat-list-page-container">
+    <header className="chat-main-header">
+      <div className="chat-list-titlebar"><button type="button" className="chat-list-back-btn" onClick={onNavigateHome} aria-label="ย้อนกลับ"><ArrowLeft size={20} /></button><h1>SPU Market Chats</h1><span aria-hidden="true" /></div>
+      <label className="chat-search-wrap"><Search size={16} className="chat-search-icon" /><input className="chat-search-input" placeholder="ค้นหาแชทหรือสินค้า..." value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} /></label>
+    </header>
+    <div className="chat-filter-tabs"><button className={`chat-tab-pill ${activeCategory === 'all' ? 'active' : ''}`} onClick={() => setActiveCategory('all')}>ทั้งหมด</button><button className={`chat-tab-pill ${activeCategory === 'trading' ? 'active' : ''}`} onClick={() => setActiveCategory('trading')}>ซื้อขาย</button></div>
+    {error && <p className="chat-live-error" role="alert">โหลดแชทไม่สำเร็จ: {error}</p>}
+    <SkeletonReveal loading={loading} skeleton={<div className="chat-items-list chat-skeleton-list" aria-hidden="true">{[0, 1, 2, 3].map((item) => <div className="chat-list-card" key={item}><SkeletonBlock className="chat-skeleton-avatar" /><div className="chat-skeleton-copy"><SkeletonBlock /><SkeletonBlock /><SkeletonBlock /></div></div>)}</div>}>
+    {visibleConversations.length === 0 ? <div className="chat-live-empty"><div className="chat-empty-icon"><Search size={26} /></div><p>{searchQuery ? 'ไม่พบแชทที่ค้นหา' : 'ยังไม่มีห้องแชทซื้อขาย'}</p><small>เริ่มแชทได้จากหน้ารายละเอียดสินค้า</small></div> : <div className="chat-items-list">{visibleConversations.map((chat) => <button type="button" key={chat.id} className="chat-list-card" onClick={() => onSelectChat(chat)}>
+      <div className="chat-card-avatar-wrap">{chat.image ? <img src={chat.image} alt="" className="chat-card-avatar" /> : <div className="chat-official-avatar"><ShieldCheck size={22} /></div>}{chat.unreadCount > 0 && <span className="chat-unread-avatar-badge">{chat.unreadCount > 99 ? '99+' : chat.unreadCount}</span>}</div>
+      <div className="chat-card-content"><div className="chat-card-top-row"><div className="chat-card-sender-name"><span className="sender-title">{chat.name}</span><span className="chat-role-badge">{chat.roleLabel}</span><CheckCircle2 size={13} className="sender-verified-icon" /></div><div className="chat-card-time-row"><Clock size={11} /><span className="chat-time-label">{formatChatDate(chat.updated_at)}</span></div></div>
+        <div className="chat-product-ref-label"><span className="chat-product-title-badge">{chat.productTitle}</span>{chat.location && <span className="chat-pickup-location-badge"><MapPin size={11} />{chat.location}</span>}</div><div className="chat-card-bottom-row"><div className="chat-last-msg-box"><p className={`chat-last-message ${chat.unreadCount ? 'has-unread' : ''}`}>{chat.lastMessage}</p></div></div>
       </div>
-
-      {/* 5. Trust Guarantee Notice */}
-      <div className="chat-trust-banner">
-        <div className="trust-banner-left">
-          <ShieldCheck size={16} className="trust-banner-icon" />
-          <p>
-            แชทปลอดภัย SPU: ยืนยันตัวตน นศ. 100% นัดรับที่...
-          </p>
-        </div>
-        <button
-          type="button"
-          className="trust-banner-btn"
-          onClick={() => alert('แนะนำจุดนัดรับ: อาคาร 11 ชั้น 1, โรงอาหารกลาง')}
-        >
-          ดูจุดนัด
-        </button>
-      </div>
-
-      {/* 6. Chat Conversations List */}
-      <div className="chat-items-list">
-        {filteredChats.map((chat) => (
-          <div
-            key={chat.id}
-            className={`chat-list-card ${chat.pinned ? 'pinned' : ''}`}
-            onClick={() => onSelectChat(chat.id)}
-          >
-            {/* Avatar */}
-            <div className="chat-card-avatar-wrap">
-              {chat.isOfficial ? (
-                <div className="chat-official-avatar">
-                  <ShieldCheck size={22} />
-                </div>
-              ) : (
-                <img src={chat.avatar} alt={chat.name} className="chat-card-avatar" />
-              )}
-              {chat.online && <span className="chat-online-badge" />}
-            </div>
-
-            {/* Middle Info */}
-            <div className="chat-card-content">
-              <div className="chat-card-top-row">
-                <div className="chat-card-sender-name">
-                  <span className="sender-title">{chat.name}</span>
-                  {chat.verified && <CheckCircle2 size={13} className="sender-verified-icon" />}
-                  {chat.pickupBadge && (
-                    <span className="chat-pickup-badge">
-                      <Clock size={10} />
-                      <span>{chat.pickupBadge}</span>
-                    </span>
-                  )}
-                  {chat.customerBadge && (
-                    <span className="chat-customer-badge">
-                      <span>{chat.customerBadge}</span>
-                    </span>
-                  )}
-                  {chat.seniorBadge && (
-                    <span className="chat-senior-badge">
-                      <GraduationCap size={10} />
-                      <span>{chat.seniorBadge}</span>
-                    </span>
-                  )}
-                </div>
-
-                <div className="chat-card-time-row">
-                  {chat.pinned && <Pin size={11} className="chat-pin-icon" />}
-                  <span className="chat-time-label">{chat.time}</span>
-                </div>
-              </div>
-
-              {/* Product Reference Name */}
-              {chat.productName && (
-                <div className="chat-product-ref-label">
-                  <span>{chat.productName}</span>
-                </div>
-              )}
-
-              {/* Last Message snippet */}
-              <div className="chat-card-bottom-row">
-                <div className="chat-last-msg-box">
-                  <p className="chat-last-message">{chat.lastMessage}</p>
-                  {chat.isRead && <CheckCheck size={14} className="chat-read-icon" />}
-                </div>
-
-                {chat.unreadCount && (
-                  <span className="chat-unread-count-pill">{chat.unreadCount}</span>
-                )}
-                {chat.offerPrice && (
-                  <span className="chat-offer-price-pill">{chat.offerPrice}</span>
-                )}
-              </div>
-            </div>
-
-            {/* Product Thumbnail on the right */}
-            {chat.productThumb && (
-              <div className="chat-card-prod-thumb-wrap">
-                <img
-                  src={chat.productThumb}
-                  alt={chat.productName || 'สินค้า'}
-                  className="chat-card-prod-thumb"
-                />
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/* 7. Recommended Meetup Spots in SPU */}
-      <section className="chat-recommended-spots">
-        <div className="spots-section-header">
-          <div className="spots-title-wrap">
-            <Calendar size={15} className="spots-icon-pink" />
-            <h4>จุดนัดรับแชทแนะนำใน ม.ศรีปทุม</h4>
-          </div>
-          <button
-            type="button"
-            className="spots-map-link"
-            onClick={() => alert('แผนผังจุดนัดรับในมหาวิทยาลัยศรีปทุม (บางเขน)')}
-          >
-            แผนผังจุดนัดรับ
-          </button>
-        </div>
-
-        <div className="spots-cards-grid">
-          <div className="spot-guide-card">
-            <h5>อาคาร 11</h5>
-            <span>โถงหน้าที่ 1</span>
-          </div>
-
-          <div className="spot-guide-card">
-            <h5>โรงอาหารกลาง</h5>
-            <span>โซนเสา 4</span>
-          </div>
-
-          <div className="spot-guide-card">
-            <h5>ตึก 5 สถาปัตย์</h5>
-            <span>ลานกิจกรรม</span>
-          </div>
-        </div>
-      </section>
-
-      {/* 8. Floating Action Button */}
-      <button
-        type="button"
-        className="chat-floating-fab"
-        title="เริ่มแชทใหม่"
-        onClick={() => alert('เริ่มบทสนทนาใหม่: ค้นหาเพื่อนหรือสินค้าในตลาด')}
-      >
-        <Plus size={24} strokeWidth={2.5} />
-      </button>
-    </div>
-  );
+    </button>)}</div>}
+    </SkeletonReveal>
+  </section>;
 }

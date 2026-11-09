@@ -1,6 +1,9 @@
 import React from 'react';
-import { MapPin, Shield } from 'lucide-react';
+import { MapPin } from 'lucide-react';
 import { LOCATIONS } from '../../data/products';
+import ImagePreview from '../spectrumui/image-preview';
+
+const CAMPUS_MAP_IMAGE = '/images/spu-campus-map.png';
 
 export default function LocationFilter({ activeLocation, onSelectLocation }) {
   return (
@@ -10,10 +13,14 @@ export default function LocationFilter({ activeLocation, onSelectLocation }) {
           <MapPin size={16} className="pin-icon" strokeWidth={2.4} />
           <h3 className="location-heading">จุดนัดรับยอดนิยมในมหาวิทยาลัย</h3>
         </div>
-        <div className="campus-safe-badge">
-          <Shield size={11} />
-          <span>สะดวกปลอดภัย ในแคมปัส</span>
-        </div>
+        <ImagePreview
+          src={CAMPUS_MAP_IMAGE}
+          alt="แผนที่มหาวิทยาลัยศรีปทุม"
+          width={480}
+          height={340}
+          className="campus-safe-badge campus-map-trigger"
+          triggerLabel="แผนที่ SPU"
+        />
       </div>
 
       <div className="location-chips-row">

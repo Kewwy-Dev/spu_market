@@ -1,13 +1,59 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Home, MessageCircle, ShoppingCart, User } from 'lucide-react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 
-export default function BottomNav({ activeTab, onSelectTab, cartCount = 3 }) {
+const unreadVariants = {
+  enter: (direction) => ({ y: direction * 8, opacity: 0 }),
+  center: { y: 0, opacity: 1 },
+  exit: (direction) => ({ y: direction * -8, opacity: 0 }),
+};
+
+function AnimatedCountBadge({ count, tone = 'unread' }) {
+  const reducedMotion = useReducedMotion();
+  const previousCount = useRef(count);
+  const direction = count >= previousCount.current ? 1 : -1;
+  useEffect(() => { previousCount.current = count; }, [count]);
+  const displayCount = count > 99 ? '99+' : String(count);
+  return <AnimatePresence initial={false}>
+    {count > 0 && <motion.span
+      key="unread-badge"
+      className={`nav-count-badge ${tone === 'cart' ? 'nav-count-badge-cart' : 'nav-count-badge-unread'}`}
+      aria-hidden="true"
+      initial={{ scale: 0 }}
+      animate={{ scale: 1 }}
+      exit={{ scale: 0 }}
+      transition={reducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 500, damping: 22 }}
+    >
+      <span className="nav-unread-count-clip">
+        <AnimatePresence mode="popLayout" initial={false} custom={direction}>
+          <motion.span
+            key={displayCount}
+            className="nav-unread-count-digit"
+            custom={direction}
+            variants={unreadVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={reducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 400, damping: 30 }}
+          >{displayCount}</motion.span>
+        </AnimatePresence>
+      </span>
+    </motion.span>}
+  </AnimatePresence>;
+}
+
+export default function BottomNav({ activeTab, onSelectTab, cartCount = 0, unreadMessageCount = 0 }) {
   return (
     <nav className="fixed-bottom-nav" aria-label="แถบเมนูหลัก">
       <button
         type="button"
         className={`nav-tab-item ${activeTab === 'home' ? 'active' : ''}`}
-        onClick={() => onSelectTab('home')}
+        aria-label="ไปหน้าแรก"
+        aria-current={activeTab === 'home' ? 'page' : undefined}
+        onClick={() => {
+          if (window.location.pathname !== '/home') window.history.pushState({}, '', '/home');
+          onSelectTab('home');
+        }}
       >
         <Home size={20} strokeWidth={activeTab === 'home' ? 2.5 : 2} />
         <span className="tab-label">หน้าแรก</span>
@@ -17,29 +63,11 @@ export default function BottomNav({ activeTab, onSelectTab, cartCount = 3 }) {
         type="button"
         className={`nav-tab-item ${activeTab === 'chat' ? 'active' : ''}`}
         onClick={() => onSelectTab('chat')}
+        aria-label={unreadMessageCount > 0 ? `แชท มีข้อความที่ยังไม่อ่าน ${unreadMessageCount} ข้อความ` : 'แชท'}
       >
         <div className="nav-icon-badge-wrapper" style={{ position: 'relative', display: 'inline-flex' }}>
           <MessageCircle size={20} strokeWidth={activeTab === 'chat' ? 2.5 : 2} />
-          <span
-            style={{
-              position: 'absolute',
-              top: '-4px',
-              right: '-6px',
-              background: 'var(--spu-pink)',
-              color: '#ffffff',
-              fontSize: '0.56rem',
-              fontWeight: 800,
-              width: '15px',
-              height: '15px',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              border: '1.5px solid #ffffff',
-            }}
-          >
-            3
-          </span>
+          <AnimatedCountBadge count={unreadMessageCount} />
         </div>
         <span className="tab-label">แชท</span>
       </button>
@@ -51,28 +79,7 @@ export default function BottomNav({ activeTab, onSelectTab, cartCount = 3 }) {
       >
         <div className="nav-icon-badge-wrapper" style={{ position: 'relative', display: 'inline-flex' }}>
           <ShoppingCart size={20} strokeWidth={activeTab === 'cart' ? 2.5 : 2} />
-          {cartCount > 0 && (
-            <span
-              style={{
-                position: 'absolute',
-                top: '-4px',
-                right: '-6px',
-                background: '#f59e0b',
-                color: '#ffffff',
-                fontSize: '0.56rem',
-                fontWeight: 800,
-                width: '15px',
-                height: '15px',
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: '1.5px solid #ffffff',
-              }}
-            >
-              {cartCount}
-            </span>
-          )}
+          <AnimatedCountBadge count={cartCount} tone="cart" />
         </div>
         <span className="tab-label">ตะกร้า</span>
       </button>

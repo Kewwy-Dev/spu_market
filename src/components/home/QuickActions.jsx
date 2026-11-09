@@ -7,7 +7,7 @@ export default function QuickActions({ onNavigateToRegister, onActionSelect }) {
       {/* 1. ซื้อสินค้า */}
       <button
         type="button"
-        className="quick-action-card active-action"
+        className="quick-action-card"
         onClick={() => onActionSelect?.('buy')}
       >
         <div className="action-icon-circle action-pink">

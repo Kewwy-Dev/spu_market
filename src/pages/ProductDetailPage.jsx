@@ -1,344 +1,45 @@
 import React, { useState } from 'react';
-import {
-  ArrowLeft,
-  Share2,
-  Bookmark,
-  ShieldCheck,
-  CheckCircle2,
-  MapPin,
-  Clock,
-  Sparkles,
-  MessageCircle,
-  Star,
-  Check,
-  Building2,
-  AlertCircle,
-} from 'lucide-react';
+import { ArrowLeft, Share2, Heart, MapPin, MessageCircle, ShoppingCart, X } from 'lucide-react';
 
-export default function ProductDetailPage({
-  product: _product,
-  currentUser,
-  onBack,
-  onNavigateToChat,
-}) {
+const money = (value) => new Intl.NumberFormat('th-TH').format(value || 0);
+
+export default function ProductDetailPage({ product, onBack, onNavigateToChat, onAddToCart, isOwner = false }) {
   const [isSaved, setIsSaved] = useState(false);
-  const [currentPhotoIdx, setCurrentPhotoIdx] = useState(0);
-
-  const photos = [
-    'https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=800&auto=format&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1561154464-82e9adf32764?w=800&auto=format&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1585790050230-5dd28404ccb9?w=800&auto=format&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1589739900243-4b52cd9b104e?w=800&auto=format&fit=crop&q=80',
-  ];
-
-  const handleContactLine = () => {
-    if (!currentUser) {
-      if (onNavigateToChat) onNavigateToChat();
-      return;
-    }
-    alert('กำลังเปิด LINE เพื่อติดต่อคุณ น้องฟ้า คณะนิเทศฯ (Fah F.) ID: @fah_spu65');
+  const [imageIndex, setImageIndex] = useState(0);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [touchStartX, setTouchStartX] = useState(null);
+  if (!product) return <div className="product-not-found"><button type="button" onClick={onBack}><ArrowLeft size={18} /> กลับไปหน้าสินค้า</button><p>ไม่พบสินค้านี้</p></div>;
+  const images = product.images?.length ? product.images : product.image ? [product.image] : [];
+  const shiftImage = (delta) => setImageIndex((index) => (index + delta + images.length) % images.length);
+  const handleTouchStart = (event) => setTouchStartX(event.touches[0].clientX);
+  const handleTouchEnd = (event) => {
+    if (touchStartX === null) return;
+    const distance = event.changedTouches[0].clientX - touchStartX;
+    if (Math.abs(distance) > 40 && images.length > 1) shiftImage(distance < 0 ? 1 : -1);
+    setTouchStartX(null);
   };
 
-  const handleChat = () => {
-    if (!currentUser) {
-      if (onNavigateToChat) onNavigateToChat();
-      return;
-    }
-    if (onNavigateToChat) {
-      onNavigateToChat();
-    } else {
-      alert('ระบบแชทในแอป SPU Market: กำลังเชื่อมต่อห้องสนทนากับผู้ขาย...');
-    }
-  };
-
-  return (
-    <div className="product-detail-page-container">
-      {/* 1. Header Navigation */}
-      <header className="prod-detail-header">
-        <button
-          type="button"
-          className="prod-header-btn"
-          onClick={onBack}
-          aria-label="ย้อนกลับ"
-        >
-          <ArrowLeft size={18} />
-        </button>
-
-        <h1 className="prod-header-title">รายละเอียดสินค้า</h1>
-
-        <div className="prod-header-actions">
-          <button
-            type="button"
-            className="prod-header-btn"
-            title="แชร์สินค้า"
-            onClick={() => alert('คัดลอกลิงก์สินค้านี้แล้ว')}
-          >
-            <Share2 size={18} />
-          </button>
-          <button
-            type="button"
-            className={`prod-header-btn ${isSaved ? 'saved' : ''}`}
-            title="บันทึกสินค้า"
-            onClick={() => setIsSaved(!isSaved)}
-          >
-            <Bookmark size={18} fill={isSaved ? '#e6007e' : 'none'} color={isSaved ? '#e6007e' : 'currentColor'} />
-          </button>
-        </div>
-      </header>
-
-      {/* 2. Photo Carousel */}
-      <div className="prod-carousel-wrap">
-        <img
-          src={photos[currentPhotoIdx]}
-          alt="iPad Air 5"
-          className="prod-carousel-img"
-        />
-
-        <div className="prod-warranty-badge">
-          <ShieldCheck size={13} />
-          <span>มีประกันศูนย์เหลือ 6 เดือน</span>
-        </div>
-
-        <div className="prod-carousel-counter">
-          <span>{currentPhotoIdx + 1}/{photos.length}</span>
-        </div>
-
-        {/* Dots */}
-        <div className="prod-carousel-dots">
-          {photos.map((_, idx) => (
-            <span
-              key={idx}
-              className={`carousel-dot ${currentPhotoIdx === idx ? 'active' : ''}`}
-              onClick={() => setCurrentPhotoIdx(idx)}
-            />
-          ))}
-        </div>
-      </div>
-
-      <div className="prod-content-body">
-        {/* 3. Price & Title */}
-        <div className="prod-price-card">
-          <div className="prod-price-row">
-            <div className="prod-main-price-box">
-              <span className="prod-price-val">฿14,500</span>
-              <span className="prod-price-original">฿17,900</span>
-            </div>
-            <span className="prod-discount-pill">ประหยัด 19%</span>
-          </div>
-
-          <h2 className="prod-main-title">
-            iPad Air 5 64GB WiFi สี Space Gray แบตเตอรี่ 94% สภาพดีมาก
-          </h2>
-
-          <div className="prod-tags-row">
-            <span className="prod-tag green">#พร้อมอุปกรณ์ครบกล่อง</span>
-            <span className="prod-tag">#มีเคสแถมให้</span>
-            <span className="prod-tag">#ฟิล์มกระจก</span>
-            <span className="prod-tag">#นัดรับในมอ SPU</span>
-          </div>
-
-          {/* 3 Spec highlight boxes */}
-          <div className="prod-specs-grid">
-            <div className="spec-box">
-              <span className="spec-title">สภาพภายนอก</span>
-              <span className="spec-value">96% สภาพเนียน</span>
-            </div>
-            <div className="spec-box">
-              <span className="spec-title">ประกันศูนย์</span>
-              <span className="spec-value">เหลือ 2 เดือน</span>
-            </div>
-            <div className="spec-box">
-              <span className="spec-title">อุปกรณ์</span>
-              <span className="spec-value">ครบกล่องแท้</span>
-            </div>
-          </div>
-        </div>
-
-        {/* 4. Meetup & Verification Spot in SPU */}
-        <section className="prod-section-card">
-          <div className="prod-card-header">
-            <div className="prod-card-title">
-              <MapPin size={17} className="icon-spu-pink" />
-              <h3>จุดนัดรับ & ตรวจสอบสินค้าในมหาวิทยาลัย</h3>
-            </div>
-          </div>
-          <p className="prod-card-subtitle">
-            แนะนำให้นัดตรวจสอบสภาพสินค้าและทดลองใช้งานจริงก่อนชำระเงิน
-          </p>
-
-          <div className="prod-meetup-box">
-            <div className="meetup-row">
-              <Building2 size={16} className="meetup-icon" />
-              <div className="meetup-text">
-                <strong>ตึก 11 ชั้น 1 (ลานกิจกรรมและโรงอาหารใหม่) หรือ โรงอาหารกลาง SPU</strong>
-              </div>
-            </div>
-
-            <div className="meetup-row">
-              <Clock size={16} className="meetup-icon" />
-              <div className="meetup-text">
-                <span>สะดวกทุกวัน จันทร์ - ศุกร์ หลัง 13:00 น. (ช่วงพักเบรก / เลิกคลาส)</span>
-              </div>
-            </div>
-
-            <div className="meetup-trust-notice">
-              <ShieldCheck size={14} className="trust-check" />
-              <span>ปลอดภัย 100%: นัดรับในพื้นที่มหาวิทยาลัย มีกล้องวงจรปิดและผู้คนพลุกพล่าน</span>
-            </div>
-          </div>
-        </section>
-
-        {/* 5. Product Description */}
-        <section className="prod-section-card">
-          <div className="prod-card-header">
-            <div className="prod-card-title">
-              <Sparkles size={17} className="icon-spu-pink" />
-              <h3>รายละเอียดสินค้าจากผู้ขาย</h3>
-            </div>
-          </div>
-
-          <div className="prod-desc-content">
-            <p>
-              สวัสดีค่ะ ปล่อยต่อ iPad Air 5 ความจุ 64GB WiFi สี Space Gray ซื้อมาตอนปี 2 เทอม 1 ใช้งานถนอมมาก ส่วนใหญ่ใช้จดเลกเชอร์ในคลาสเรียนของ SPU กับวาดรูปส่งงาน ติดฟิล์มกระจก Paper-like ให้เรียบร้อย ไม่เคยตกหล่น ใช้งานได้สมบูรณ์ทุกอย่าง แบตเตอรี่อึด 94% สุขภาพแบตดีมาก ไม่เคยแกะซ่อม มีใบเสร็จตอนซื้อให้ดูเพื่อความสบายใจค่ะ
-            </p>
-
-            <div className="prod-includes-box">
-              <h5>อุปกรณ์และของแถมในกล่อง:</h5>
-              <ul>
-                <li>
-                  <Check size={13} className="check-bullet" />
-                  <span>ตัวเครื่อง iPad Air 5 (ติดฟิล์มกระจกด้านเรียบร้อย)</span>
-                </li>
-                <li>
-                  <Check size={13} className="check-bullet" />
-                  <span>กล่องแท้ Original เลข Serial ตรงกล่อง</span>
-                </li>
-                <li>
-                  <Check size={13} className="check-bullet" />
-                  <span>หัวชาร์จ 20W + สายชาร์จแท้ Type-C</span>
-                </li>
-                <li>
-                  <Check size={13} className="check-bullet" />
-                  <span>แถมฟรี! เคสแบบพับตั้งได้สีดำสภาพดี (มูลค่า 490.-)</span>
-                </li>
-                <li>
-                  <Check size={13} className="check-bullet" />
-                  <span>แถมฟรี! หัวปากกา Stylus สำรอง พร้อมกล่องใส่ปากกา</span>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </section>
-
-        {/* 6. Verified Seller Information */}
-        <section className="prod-section-card">
-          <div className="prod-card-header">
-            <div className="prod-card-title">
-              <ShieldCheck size={17} className="icon-spu-pink" />
-              <h3>ข้อมูลผู้ขายที่ได้รับการยืนยันตัวตน</h3>
-            </div>
-            <span className="seller-status-chip">ยืนยันตนแล้ว</span>
-          </div>
-
-          <div className="prod-seller-profile">
-            <div className="prod-seller-top">
-              <div className="prod-seller-avatar-wrap">
-                <img
-                  src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80"
-                  alt="น้องฟ้า"
-                  className="prod-seller-avatar"
-                />
-                <span className="prod-seller-check">
-                  <CheckCircle2 size={13} />
-                </span>
-              </div>
-
-              <div className="prod-seller-info">
-                <h4>น้องฟ้า คณะนิเทศฯ (Fah F.)</h4>
-                <div className="prod-seller-sub">
-                  <span className="spu-verified-badge">
-                    <CheckCircle2 size={11} />
-                    <span>นักศึกษาคณะนิเทศศาสตร์ ม.ศรีปทุม (รหัส 65xxxx)</span>
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="prod-seller-stats-strip">
-              <div className="seller-stat-cell">
-                <span className="stat-score-val">
-                  <Star size={13} fill="#f59e0b" color="#f59e0b" />
-                  <span>4.9</span>
-                </span>
-                <span className="stat-score-label">38 รีวิวจากเพื่อน SPU</span>
-              </div>
-              <div className="stat-cell-divider" />
-              <div className="seller-stat-cell">
-                <span className="stat-num-val">18</span>
-                <span className="stat-score-label">ส่งมอบสำเร็จ 100%</span>
-              </div>
-              <div className="stat-cell-divider" />
-              <div className="seller-stat-cell">
-                <span className="stat-num-val">1.4 ปี</span>
-                <span className="stat-score-label">สมาชิก SPU Market</span>
-              </div>
-            </div>
-
-            {/* Buyer Review Quote */}
-            <div className="prod-review-quote">
-              <div className="quote-header">
-                <strong>เอก สถาปัตย์ ม.ศรีปทุม</strong>
-                <span className="quote-time">2 วันก่อน</span>
-              </div>
-              <p>
-                "ผู้ขายนิสัยดีมาก นัดรับตรงเวลาที่ตึก 11 สอนตรวจเช็คเครื่องให้อย่างละเอียด แนะนำเลยค่ะ 👍"
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* 7. Safety Advice Card */}
-        <div className="prod-safety-card">
-          <div className="safety-card-left">
-            <AlertCircle size={18} className="safety-icon" />
-          </div>
-          <p>
-            <strong>ข้อแนะนำการซื้อขายปลอดภัยในมหาลัย:</strong> ควรนัดรับและตรวจเช็คสินค้าจริงในพื้นที่มหาวิทยาลัยที่มีคนพลุกพล่าน และชำระเงินผ่าน SPU PromptPay หรือโอนเข้าบัญชีผู้ขายที่ตรงกับชื่อที่ยืนยันตัวตนเท่านั้น
-          </p>
-        </div>
-      </div>
-
-      {/* 8. Fixed Bottom Action Bar */}
-      <div className="prod-bottom-bar">
-        <button
-          type="button"
-          className="prod-bottom-icon-btn"
-          onClick={handleChat}
-          title="แชทกับผู้ขาย"
-        >
-          <MessageCircle size={20} />
-          <span>แชท</span>
-        </button>
-
-        <button
-          type="button"
-          className={`prod-bottom-icon-btn ${isSaved ? 'active' : ''}`}
-          onClick={() => setIsSaved(!isSaved)}
-          title="บันทึกสินค้า"
-        >
-          <Bookmark size={20} fill={isSaved ? '#e6007e' : 'none'} color={isSaved ? '#e6007e' : 'currentColor'} />
-          <span>{isSaved ? 'บันทึกแล้ว' : 'สนใจ'}</span>
-        </button>
-
-        <button
-          type="button"
-          className="prod-contact-line-btn"
-          onClick={handleContactLine}
-        >
-          <MessageCircle size={18} strokeWidth={2.4} />
-          <span>{currentUser ? 'ติดต่อผ่าน LINE ผู้ขาย' : 'เข้าสู่ระบบเพื่อติดต่อผู้ขาย'}</span>
-        </button>
-      </div>
+  return <div className="product-detail-page-container">
+    <header className="product-view-header">
+      <button type="button" aria-label="ย้อนกลับ" onClick={onBack}><ArrowLeft size={20} /></button>
+      <div><button type="button" aria-label="แชร์สินค้า" onClick={() => navigator.clipboard?.writeText(window.location.href)}><Share2 size={19} /></button><button type="button" aria-label="บันทึกสินค้า" className={isSaved ? 'saved' : ''} onClick={() => setIsSaved((saved) => !saved)}><Heart size={20} fill={isSaved ? 'currentColor' : 'none'} /></button></div>
+    </header>
+    <div className="product-view-image-wrap" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+      {images.length > 0 ? <img src={images[imageIndex]} alt={`${product.title} ${imageIndex + 1}`} className="product-view-image" onClick={() => setIsExpanded(true)} /> : <div className="product-image-empty">ไม่มีรูปภาพ</div>}
+      {product.tag && <span className="product-view-tag">{product.tag}</span>}
+      <span className="product-image-count">{images.length ? `${imageIndex + 1}/${images.length}` : '0/0'}</span>
     </div>
-  );
+    <main className="product-view-content">
+      <div className="product-view-price-row"><strong>฿{money(product.price)}</strong>{product.timeAgo && <span>{product.timeAgo}</span>}</div>
+      <h1>{product.title}</h1>
+      <section className="product-description-card"><h2>รายละเอียดสินค้า</h2><p>{product.description || 'ไม่มีรายละเอียดสินค้า'}</p></section>
+      <section className="product-pickup-card"><div className="product-pickup-heading"><MapPin size={18} /><strong>จุดนัดรับ</strong></div><p>{product.location || 'ไม่ระบุจุดนัดรับ'}</p></section>
+      <section className="product-view-seller"><div className="product-view-avatar">{product.seller?.charAt(0) || 'S'}</div><div><strong>{product.seller || 'ผู้ขาย SPU Market'}</strong><span>{product.verified ? 'ยืนยันตัวตนแล้ว' : 'สมาชิก SPU Market'}</span></div></section>
+    </main>
+    <footer className="product-view-actions">
+      <button type="button" className="product-chat-action" disabled={isOwner} onClick={onNavigateToChat}><MessageCircle size={17} /> {isOwner ? 'สินค้าของคุณ' : 'แชท'}</button>
+      <button type="button" className="product-buy-action" disabled={isOwner} onClick={() => onAddToCart?.(product)}><ShoppingCart size={17} /> {isOwner ? 'สั่งซื้อไม่ได้' : 'สั่งซื้อ'}</button>
+    </footer>
+    {isExpanded && <div className="product-image-lightbox" onClick={() => setIsExpanded(false)} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}><button aria-label="ปิดภาพ" onClick={() => setIsExpanded(false)}><X /></button><img src={images[imageIndex]} alt={product.title} onClick={(event) => event.stopPropagation()} /><span>{imageIndex + 1}/{images.length}</span></div>}
+  </div>;
 }

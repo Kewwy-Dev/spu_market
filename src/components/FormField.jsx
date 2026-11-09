@@ -15,6 +15,7 @@ export default function FormField({
   maxLength,
   inputMode,
   autoComplete,
+  readOnly = false,
 }) {
   return (
     <div className={`form-field-group ${error ? 'has-error' : ''}`}>
@@ -40,6 +41,7 @@ export default function FormField({
           maxLength={maxLength}
           inputMode={inputMode}
           autoComplete={autoComplete}
+          readOnly={readOnly}
           className={`form-input ${Icon ? 'with-icon' : ''}`}
         />
       </div>

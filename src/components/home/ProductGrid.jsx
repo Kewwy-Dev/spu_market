@@ -1,8 +1,30 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Flame, Clock } from 'lucide-react';
 import ProductCard from './ProductCard';
 
-export default function ProductGrid({ products, onSelectProduct }) {
+function formatRelativeUpdate(updatedAt, now) {
+  if (!updatedAt) return 'กำลังรอข้อมูล';
+  const updatedTime = new Date(updatedAt).getTime();
+  if (!Number.isFinite(updatedTime)) return 'ไม่ทราบเวลาอัปเดต';
+
+  const elapsedMinutes = Math.max(0, Math.floor((now - updatedTime) / 60_000));
+  if (elapsedMinutes === 0) return 'เมื่อสักครู่';
+  if (elapsedMinutes < 60) return `${elapsedMinutes} นาทีที่แล้ว`;
+  const elapsedHours = Math.floor(elapsedMinutes / 60);
+  if (elapsedHours < 24) return `${elapsedHours} ชั่วโมงที่แล้ว`;
+  const elapsedDays = Math.floor(elapsedHours / 24);
+  if (elapsedDays < 7) return `${elapsedDays} วันที่แล้ว`;
+  return new Date(updatedTime).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+export default function ProductGrid({ products, updatedAt, onSelectProduct }) {
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
   return (
     <section className="product-feed-section">
       <div className="section-title-row">
@@ -12,7 +34,7 @@ export default function ProductGrid({ products, onSelectProduct }) {
         </div>
         <div className="feed-update-time">
           <Clock size={12} />
-          <span>อัปเดตล่าสุด 5 นาทีที่แล้ว</span>
+          <span>อัปเดตล่าสุด {formatRelativeUpdate(updatedAt, now)}</span>
         </div>
       </div>
 
