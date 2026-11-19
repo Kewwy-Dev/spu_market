@@ -10,13 +10,14 @@ const unreadVariants = {
 
 function AnimatedCountBadge({ count, tone = 'unread' }) {
   const reducedMotion = useReducedMotion();
-  const previousCount = useRef(count);
-  const direction = count >= previousCount.current ? 1 : -1;
-  useEffect(() => { previousCount.current = count; }, [count]);
-  const displayCount = count > 99 ? '99+' : String(count);
+  const safeCount = Number.isFinite(Number(count)) ? Math.max(0, Math.floor(Number(count))) : 0;
+  const previousCount = useRef(safeCount);
+  const direction = safeCount >= previousCount.current ? 1 : -1;
+  useEffect(() => { previousCount.current = safeCount; }, [safeCount]);
+  const displayCount = safeCount > 99 ? '99+' : String(safeCount);
   return <AnimatePresence initial={false}>
-    {count > 0 && <motion.span
-      key="unread-badge"
+    {safeCount > 0 && <motion.span
+      key={`badge-${tone}`}
       className={`nav-count-badge ${tone === 'cart' ? 'nav-count-badge-cart' : 'nav-count-badge-unread'}`}
       aria-hidden="true"
       initial={{ scale: 0 }}
@@ -86,10 +87,10 @@ export default function BottomNav({ activeTab, onSelectTab, cartCount = 0, unrea
 
       <button
         type="button"
-        className={`nav-tab-item ${activeTab === 'profile' || activeTab === 'login' ? 'active' : ''}`}
+        className={`nav-tab-item ${activeTab === 'profile' ? 'active' : ''}`}
         onClick={() => onSelectTab('profile')}
       >
-        <User size={20} strokeWidth={activeTab === 'profile' || activeTab === 'login' ? 2.5 : 2} />
+        <User size={20} strokeWidth={activeTab === 'profile' ? 2.5 : 2} />
         <span className="tab-label">โปรไฟล์</span>
       </button>
     </nav>

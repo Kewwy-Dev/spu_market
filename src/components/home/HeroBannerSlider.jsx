@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, ShieldCheck, MapPin, Sparkles, Tag, Flame } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Sparkles, Flame } from 'lucide-react';
 
 const SLIDES = [
   {
@@ -40,11 +40,16 @@ const SLIDES = [
   },
 ];
 
-export default function HeroBannerSlider({ onNavigateToRegister }) {
+export default function HeroBannerSlider({
+  onNavigateToRegister,
+  onNavigateToProducts,
+  onSelectLocationSection,
+}) {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
+  const isDragging = useRef(false);
 
   // Auto-advance slider every 3.8 seconds
   useEffect(() => {
@@ -67,10 +72,14 @@ export default function HeroBannerSlider({ onNavigateToRegister }) {
 
   const handleTouchStart = (e) => {
     touchStartX.current = e.touches[0].clientX;
+    isDragging.current = false;
   };
 
   const handleTouchMove = (e) => {
     touchEndX.current = e.touches[0].clientX;
+    if (Math.abs(touchStartX.current - touchEndX.current) > 10) {
+      isDragging.current = true;
+    }
   };
 
   const handleTouchEnd = () => {
@@ -85,8 +94,37 @@ export default function HeroBannerSlider({ onNavigateToRegister }) {
   };
 
   const handleBannerClick = (slide) => {
-    if (slide.id === 3 && onNavigateToRegister) {
-      onNavigateToRegister();
+    if (isDragging.current) {
+      isDragging.current = false;
+      return;
+    }
+
+    switch (slide.id) {
+      case 0:
+        // สไลด์ 0 (สินค้าใหม่) -> ไปหน้าสินค้า เรียงตามของใหม่ล่าสุด
+        onNavigateToProducts?.();
+        break;
+      case 1:
+        // สไลด์ 1 (SPU Market) -> ไปหน้าสินค้าทั้งหมด
+        onNavigateToProducts?.();
+        break;
+      case 2:
+        // สไลด์ 2 (จุดนัดรับยอดนิยม) -> เลื่อน/กรองหมวดหมู่จุดนัดรับ
+        if (onSelectLocationSection) {
+          onSelectLocationSection();
+        } else {
+          const el = document.getElementById('pickup-locations') || document.querySelector('.location-section');
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }
+        break;
+      case 3:
+        // สไลด์ 3 (SPU Verified) -> ไปหน้าสมัคร/ยืนยันตัวตน
+        onNavigateToRegister?.();
+        break;
+      default:
+        break;
     }
   };
 
@@ -109,9 +147,17 @@ export default function HeroBannerSlider({ onNavigateToRegister }) {
               key={slide.id}
               className={`hero-slide-item ${slide.theme}`}
               onClick={() => handleBannerClick(slide)}
-              role="group"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleBannerClick(slide);
+                }
+              }}
+              role="button"
+              tabIndex={0}
               aria-roledescription="slide"
-              aria-label={`${index + 1} of ${SLIDES.length}`}
+              aria-label={`${index + 1} of ${SLIDES.length}: ${slide.title} - ${slide.ctaText}`}
+              style={{ cursor: 'pointer' }}
             >
               <div className="slide-content">
                 <div className={`slider-badge ${slide.theme === 'theme-rose' ? 'slider-badge-rose' : ''}`}>
@@ -135,7 +181,22 @@ export default function HeroBannerSlider({ onNavigateToRegister }) {
                   </div>
                 )}
 
-                <div className={`slider-cta-tag ${slide.theme === 'theme-rose' ? 'slider-cta-rose' : ''}`}>
+                <div
+                  className={`slider-cta-tag ${slide.theme === 'theme-rose' ? 'slider-cta-rose' : ''}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleBannerClick(slide);
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleBannerClick(slide);
+                    }
+                  }}
+                >
                   <span>{slide.ctaText}</span>
                   <span className="cta-arrow">→</span>
                 </div>

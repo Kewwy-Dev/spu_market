@@ -2,18 +2,18 @@
 begin;
 
 insert into public.categories (id, slug, category_name) values
-  ('10000000-0000-4000-8000-000000000001', 'books', 'Books and study notes'),
-  ('10000000-0000-4000-8000-000000000002', 'uniform', 'Uniforms and clothing'),
-  ('10000000-0000-4000-8000-000000000003', 'it', 'IT and electronics'),
-  ('10000000-0000-4000-8000-000000000004', 'stationery', 'Stationery and art supplies'),
-  ('10000000-0000-4000-8000-000000000005', 'dorm', 'Dorm and everyday items')
+  ('10000000-0000-4000-8000-000000000001', 'books', 'หนังสือและชีทเรียน'),
+  ('10000000-0000-4000-8000-000000000002', 'uniform', 'เครื่องแบบและเสื้อผ้า'),
+  ('10000000-0000-4000-8000-000000000003', 'it', 'ไอทีและอิเล็กทรอนิกส์'),
+  ('10000000-0000-4000-8000-000000000004', 'stationery', 'เครื่องเขียนและอุปกรณ์ศิลปะ'),
+  ('10000000-0000-4000-8000-000000000005', 'dorm', 'ของใช้หอพักและของใช้ทั่วไป')
 on conflict (slug) do update set category_name = excluded.category_name;
 
 insert into public.pickup_locations (id, slug, location_name, is_popular) values
-  ('20000000-0000-4000-8000-000000000001', 'b11', 'Building 11', true),
-  ('20000000-0000-4000-8000-000000000002', 'b9', 'Building 9', false),
-  ('20000000-0000-4000-8000-000000000003', 'b1', 'Building 1', false),
-  ('20000000-0000-4000-8000-000000000004', 'canteen', 'SPU Central Canteen', true)
+  ('20000000-0000-4000-8000-000000000001', 'b11', 'ตึก 11 (ตึกกิจกรรม)', true),
+  ('20000000-0000-4000-8000-000000000002', 'b9', 'อาคาร 9 (สุขสำราญ)', false),
+  ('20000000-0000-4000-8000-000000000003', 'b1', 'อาคาร 1 (ตึกดำ)', false),
+  ('20000000-0000-4000-8000-000000000004', 'canteen', 'โรงอาหารกลาง SPU', true)
 on conflict (slug) do update set location_name = excluded.location_name, is_popular = excluded.is_popular;
 
 insert into public.products (id, seller_id, category_id, location_id, title, description, price, condition_tag, delivery_type, status)

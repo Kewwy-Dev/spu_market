@@ -15,7 +15,7 @@ export default function PrivacyPolicyModal({ onClose }) {
           <div className="privacy-policy-heading-icon"><ShieldCheck size={20} /></div>
           <div>
             <h2 id="privacy-policy-title">นโยบายความเป็นส่วนตัว</h2>
-            <p>แนวทางการใช้ข้อมูลของ SPU Market (เวอร์ชันต้นแบบ)</p>
+            <p>แนวทางการใช้ข้อมูลของ SPU Market</p>
           </div>
           <button type="button" className="privacy-policy-close-icon" onClick={onClose} aria-label="ปิด">
             <X size={20} />
@@ -38,8 +38,8 @@ export default function PrivacyPolicyModal({ onClose }) {
           </section>
 
           <section>
-            <h3>การจัดเก็บในเวอร์ชันนี้</h3>
-            <p>เวอร์ชันต้นแบบนี้บันทึกรายการสินค้าที่ลงขายไว้ในพื้นที่จัดเก็บของเบราว์เซอร์บนอุปกรณ์นี้ ยังไม่มีการเชื่อมต่อฐานข้อมูลกลาง การล้างข้อมูลเว็บไซต์ในเบราว์เซอร์อาจทำให้รายการที่บันทึกไว้หายไป</p>
+            <h3>การจัดเก็บและความปลอดภัย</h3>
+            <p>ข้อมูลบัญชี ประกาศสินค้า การนัดรับ และข้อความซื้อขายถูกจัดเก็บในระบบฐานข้อมูลของ SPU Market เพื่อให้บริการซื้อขายและติดตามการนัดหมายได้อย่างต่อเนื่อง ข้อมูลการเข้าสู่ระบบอาจถูกเก็บไว้ในเบราว์เซอร์ของคุณตามการตั้งค่าของอุปกรณ์เพื่อรักษาสถานะการใช้งาน</p>
           </section>
 
           <section>

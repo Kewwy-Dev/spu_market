@@ -1,3 +1,5 @@
+import { getMajorsByFaculty } from '../data/faculties';
+
 export function validateRegistrationForm(formData, memberType) {
   const errors = {};
 
@@ -11,7 +13,16 @@ export function validateRegistrationForm(formData, memberType) {
     errors.studentId = 'กรุณากรอกรหัสอาจารย์หรือบุคลากร';
   }
 
-  if (!formData.faculty) errors.faculty = 'กรุณาเลือกคณะ / ภาควิชา';
+  if (!formData.faculty) {
+    errors.faculty = 'กรุณาเลือกคณะ / วิทยาลัย';
+  } else {
+    const majors = getMajorsByFaculty(formData.faculty);
+    if (majors.length > 0 && !formData.major) {
+      errors.major = 'กรุณาเลือกสาขาวิชา';
+    } else if (majors.length > 0 && !majors.includes(formData.major)) {
+      errors.major = 'กรุณาเลือกสาขาวิชาที่ตรงกับคณะที่เลือก';
+    }
+  }
 
   if (!formData.email) errors.email = 'กรุณากรอกอีเมลมหาวิทยาลัย';
   else if (!/^[^\s@]+@spumail\.net$/i.test(formData.email.trim())) errors.email = 'อีเมลต้องลงท้ายด้วย @spumail.net';

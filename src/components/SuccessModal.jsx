@@ -13,7 +13,8 @@ export default function SuccessModal({ data, onClose, onGoToSeller }) {
       <div className="modal-info-summary">
         <div className="summary-row"><span className="summary-label">ชื่อ-สกุล</span><span className="summary-value">{data.fullName}</span></div>
         <div className="summary-row"><span className="summary-label">รหัส</span><span className="summary-value">{data.studentId}</span></div>
-        <div className="summary-row"><span className="summary-label">คณะ / ภาควิชา</span><span className="summary-value">{data.faculty}</span></div>
+        <div className="summary-row"><span className="summary-label">คณะ / วิทยาลัย</span><span className="summary-value">{data.faculty}</span></div>
+        {data.major && <div className="summary-row"><span className="summary-label">สาขาวิชา</span><span className="summary-value">{data.major}</span></div>}
         <div className="summary-row"><span className="summary-label">อีเมล SPU</span><span className="summary-value">{data.email}</span></div>
         <div className="summary-row"><span className="summary-label">ช่องทางติดต่อ</span><span className="summary-value">{data.contact}</span></div>
       </div>

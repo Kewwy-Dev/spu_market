@@ -6,8 +6,10 @@ import HeroBanner from '../components/HeroBanner';
 import MemberTypeSelector from '../components/MemberTypeSelector';
 import FormField from '../components/FormField';
 import FacultySelect from '../components/FacultySelect';
+import MajorSelect from '../components/MajorSelect';
 import PdpaConsent from '../components/PdpaConsent';
 import SubmitSection from '../components/SubmitSection';
+import { getMajorsByFaculty } from '../data/faculties';
 import { validateRegistrationForm } from '../utils/validation';
 
 const PENDING_SELLER_REGISTRATION_KEY = 'spu-market-pending-seller-registration';
@@ -32,6 +34,7 @@ export default function RegisterPage({ currentUser, onBack }) {
     fullName: pendingRegistration?.display_name || currentUser?.displayName || '',
     studentId: pendingRegistration?.student_id || currentUser?.studentId || '',
     faculty: pendingRegistration?.faculty || currentUser?.faculty || '',
+    major: pendingRegistration?.major || currentUser?.major || '',
     email: pendingRegistration?.email || currentUser?.email || '',
     contact: pendingRegistration?.contact || currentUser?.contact || '',
     consent1: pendingRegistration?.identity_check_consent === true,
@@ -44,20 +47,42 @@ export default function RegisterPage({ currentUser, onBack }) {
 
   useEffect(() => {
     if (!currentUser) return;
-    setFormData((previous) => ({
-      ...previous,
-      fullName: previous.fullName || currentUser.displayName || '',
-      studentId: previous.studentId || currentUser.studentId || '',
-      faculty: previous.faculty || currentUser.faculty || '',
-      email: previous.email || currentUser.email || '',
-      contact: previous.contact || currentUser.contact || '',
-    }));
+    setFormData((previous) => {
+      const nextFaculty = previous.faculty || currentUser.faculty || '';
+      const nextMajors = getMajorsByFaculty(nextFaculty);
+      const candidateMajor = previous.major || currentUser.major || '';
+      const nextMajor = nextMajors.length === 0 || nextMajors.includes(candidateMajor) ? candidateMajor : '';
+      return {
+        ...previous,
+        fullName: previous.fullName || currentUser.displayName || '',
+        studentId: previous.studentId || currentUser.studentId || '',
+        faculty: nextFaculty,
+        major: nextMajor,
+        email: previous.email || currentUser.email || '',
+        contact: previous.contact || currentUser.contact || '',
+      };
+    });
     if (!pendingRegistration && !formData.studentId) setMemberType(currentUser.memberType || 'student');
   }, [currentUser, pendingRegistration, formData.studentId]);
 
   const updateField = (field, value) => {
     setFormData((previous) => ({ ...previous, [field]: value }));
     if (errors[field]) setErrors((previous) => ({ ...previous, [field]: undefined }));
+  };
+
+  const handleFacultyChange = (event) => {
+    const nextFaculty = event.target.value;
+    const nextMajors = getMajorsByFaculty(nextFaculty);
+    setFormData((previous) => ({
+      ...previous,
+      faculty: nextFaculty,
+      major: nextMajors.includes(previous.major) ? previous.major : '',
+    }));
+    setErrors((previous) => ({
+      ...previous,
+      faculty: undefined,
+      major: undefined,
+    }));
   };
 
   const handleMemberTypeChange = (type) => {
@@ -70,6 +95,7 @@ export default function RegisterPage({ currentUser, onBack }) {
       display_name: formData.fullName.trim(),
       student_id: formData.studentId.trim(),
       faculty: formData.faculty,
+      major: formData.major,
       contact: formData.contact.trim(),
       member_type: memberType,
       seller_registration_pending: true,
@@ -157,7 +183,8 @@ export default function RegisterPage({ currentUser, onBack }) {
             value={formData.fullName} onChange={(event) => updateField('fullName', event.target.value)}
             placeholder="กรอกชื่อและนามสกุล" error={errors.fullName}
           />
-          <FacultySelect id="faculty" value={formData.faculty} onChange={(event) => updateField('faculty', event.target.value)} error={errors.faculty} required />
+          <FacultySelect id="faculty" value={formData.faculty} onChange={handleFacultyChange} error={errors.faculty} required />
+          <MajorSelect id="major" faculty={formData.faculty} value={formData.major} onChange={(event) => updateField('major', event.target.value)} error={errors.major} required />
           <FormField
             id="email" label="Email มหาวิทยาลัย (@spumail.net)" required icon={Mail} type="email"
             value={formData.email} onChange={(event) => updateField('email', event.target.value)}

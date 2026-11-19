@@ -34,12 +34,19 @@ export default function AppHeader({ onNotificationClick, currentUser, onNavigate
         </div>
       </div>
       <div className="header-right">
-        {!currentUser && <>
+        {!currentUser && (
           <button type="button" className="header-login-btn" onClick={onNavigateToLogin} title="เข้าสู่ระบบ">
             <LogIn size={13} strokeWidth={2.4} /><span>เข้าสู่ระบบ</span>
           </button>
-        </>}
-        {currentUser && <button type="button" className="icon-action-btn" onClick={handleNotificationClick} title="การแจ้งเตือน" aria-label={count > 0 ? `การแจ้งเตือน มี ${count} รายการที่ยังไม่อ่าน` : 'การแจ้งเตือน'}>
+        )}
+        <button
+          type="button"
+          className="icon-action-btn"
+          onClick={handleNotificationClick}
+          title="การแจ้งเตือน"
+          aria-label={count > 0 ? `การแจ้งเตือน มี ${count} รายการที่ยังไม่อ่าน` : 'การแจ้งเตือน'}
+          aria-haspopup="dialog"
+        >
           <motion.span
             key={swingKey}
             initial={{ rotate: 0 }}
@@ -73,7 +80,7 @@ export default function AppHeader({ onNotificationClick, currentUser, onNavigate
                   >{displayCount}</motion.span>
                 </AnimatePresence>
               </span>
-            </motion.span> : <motion.span
+            </motion.span> : currentUser ? <motion.span
               key="notification-dot"
               className="notification-dot"
               aria-hidden="true"
@@ -81,9 +88,9 @@ export default function AppHeader({ onNotificationClick, currentUser, onNavigate
               animate={{ scale: 1 }}
               exit={{ scale: 0 }}
               transition={reducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 500, damping: 22 }}
-            />}
+            /> : null}
           </AnimatePresence>
-        </button>}
+        </button>
       </div>
     </header>
   );

@@ -11,9 +11,58 @@ import ChatRoomPage from './pages/ChatRoomPage';
 import CartPage from './pages/CartPage';
 import ProductsPage from './pages/ProductsPage';
 import BottomNav from './components/common/BottomNav';
-import { getCurrentProfile, completeSellerRegistration, getSellerPickupLocation, listProducts, listSellerProducts, listPickupLocations, listSellerReviewSummary, createProduct, updateProduct, trashProduct, restoreProduct, updateSellerPickupLocation } from './lib/marketplace';
+import { getCurrentProfile, completeSellerRegistration, getSellerPickupLocation, listProducts, listSellerProducts, listPickupLocations, listSellerReviewSummary, createProduct, updateProduct, trashProduct, restoreProduct, updateSellerPickupLocation, updateProductStatus, markProductAsSold, listSellerTransactions, updateUserProfile, uploadProfileAvatar, getProductById, isProductFavorited, toggleFavoriteProduct } from './lib/marketplace';
+import {
+  READ_NOTIFICATION_TTL_MS,
+  deleteExpiredReadNotifications,
+  isNotificationExpired,
+  listNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+} from './lib/notifications';
 import { getSupabaseConfigError, supabase } from './lib/supabase';
 import './App.css';
+
+const PENDING_AUTH_ACTION_KEY = 'spu-market-pending-auth-action';
+const PENDING_AUTH_ACTION_TTL_MS = 30 * 60 * 1000;
+
+function isValidPendingAuthAction(action) {
+  return Boolean(action && typeof action === 'object' && typeof action.type === 'string');
+}
+
+function savePendingAuthAction(action) {
+  if (typeof window === 'undefined') return;
+  try {
+    if (!isValidPendingAuthAction(action)) {
+      window.localStorage.removeItem(PENDING_AUTH_ACTION_KEY);
+      return;
+    }
+    window.localStorage.setItem(
+      PENDING_AUTH_ACTION_KEY,
+      JSON.stringify({ ...action, savedAt: Date.now() })
+    );
+  } catch (error) {
+    console.warn('Could not save pending auth action:', error);
+  }
+}
+
+function consumePendingAuthAction() {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(PENDING_AUTH_ACTION_KEY);
+    if (!raw) return null;
+    window.localStorage.removeItem(PENDING_AUTH_ACTION_KEY);
+    const parsed = JSON.parse(raw);
+    if (!isValidPendingAuthAction(parsed)) return null;
+    if (!parsed.savedAt || Date.now() - parsed.savedAt > PENDING_AUTH_ACTION_TTL_MS) {
+      return null;
+    }
+    return parsed;
+  } catch (error) {
+    console.warn('Could not read pending auth action:', error);
+    return null;
+  }
+}
 
 function mapAuthUser(authUser, profile = {}) {
   const username = authUser.email?.split('@')[0] || 'SPU member';
@@ -24,26 +73,30 @@ function mapAuthUser(authUser, profile = {}) {
     displayName: profile.display_name || authUser.user_metadata?.display_name || username,
     studentId: profile.student_id || authUser.user_metadata?.student_id || '',
     faculty: profile.faculty || authUser.user_metadata?.faculty || '',
+    major: profile.major || authUser.user_metadata?.major || '',
     contact: profile.contact || authUser.user_metadata?.contact || '',
     lineId: profile.contact || authUser.user_metadata?.contact || '',
     role: profile.role || authUser.user_metadata?.role || 'member',
     memberType: profile.member_type || authUser.user_metadata?.member_type || 'student',
     verified: Boolean(profile.is_verified),
+    avatar: profile.avatar_url || authUser.user_metadata?.avatar_url || '',
     defaultPickupLocationId: profile.default_pickup_location_id || null,
   };
 }
 
 export default function App() {
   const getRoute = () => {
-    if (/^\/(?:home)\/?$/.test(window.location.pathname)) return { tab: 'home', productId: null, sellerId: null, chatId: null };
+    if (/^\/(?:home)\/?$/.test(window.location.pathname)) return { tab: 'home', productId: null, sellerId: null, profileId: null, chatId: null };
     const match = window.location.pathname.match(/^\/products(?:\/([^/]+))?\/?$/);
     const sellerMatch = window.location.pathname.match(/^\/seller\/([^/]+)\/?$/);
+    const profileMatch = window.location.pathname.match(/^\/profile\/([^/]+)\/?$/);
     const chatMatch = window.location.pathname.match(/^\/chat(?:\/([^/]+))?\/?$/);
-    if (/^\/login\/?$/.test(window.location.pathname)) return { tab: 'login', productId: null, sellerId: null, chatId: null };
-    if (/^\/cart\/?$/.test(window.location.pathname)) return { tab: 'cart', productId: null, sellerId: null, chatId: null };
-    if (sellerMatch) return { tab: 'seller', productId: null, sellerId: decodeURIComponent(sellerMatch[1]) };
-    if (chatMatch) return { tab: chatMatch[1] ? 'chat_room' : 'chat', productId: null, sellerId: null, chatId: chatMatch[1] ? decodeURIComponent(chatMatch[1]) : null };
-    return match ? { tab: match[1] ? 'product_detail' : 'products', productId: match[1] || null, sellerId: null } : { tab: 'home', productId: null, sellerId: null };
+    if (/^\/login\/?$/.test(window.location.pathname)) return { tab: 'login', productId: null, sellerId: null, profileId: null, chatId: null };
+    if (/^\/cart\/?$/.test(window.location.pathname)) return { tab: 'cart', productId: null, sellerId: null, profileId: null, chatId: null };
+    if (sellerMatch) return { tab: 'seller', productId: null, sellerId: decodeURIComponent(sellerMatch[1]), profileId: null, chatId: null };
+    if (profileMatch) return { tab: 'profile', productId: null, sellerId: null, profileId: decodeURIComponent(profileMatch[1]), chatId: null };
+    if (chatMatch) return { tab: chatMatch[1] ? 'chat_room' : 'chat', productId: null, sellerId: null, profileId: null, chatId: chatMatch[1] ? decodeURIComponent(chatMatch[1]) : null };
+    return match ? { tab: match[1] ? 'product_detail' : 'products', productId: match[1] || null, sellerId: null, profileId: null } : { tab: 'home', productId: null, sellerId: null, profileId: null };
   };
   const [activeTab, setActiveTab] = useState(() => (
     new URLSearchParams(window.location.hash.slice(1)).has('error') ? 'register' : getRoute().tab
@@ -51,17 +104,27 @@ export default function App() {
   const refreshProductsRef = useRef(() => {});
   const loadedSellerData = useRef(new Set());
   const [selectedProductId, setSelectedProductId] = useState(() => getRoute().productId);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [selectedProfileId, setSelectedProfileId] = useState(() => getRoute().profileId);
+  const [selectedSellerId, setSelectedSellerId] = useState(() => getRoute().sellerId || null);
+  const [loginPendingTab, setLoginPendingTab] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const pendingSellerRegistrations = useRef(new Map());
   const [products, setProducts] = useState([]);
   const [productsUpdatedAt, setProductsUpdatedAt] = useState(null);
   const [sellerProducts, setSellerProducts] = useState([]);
+  const [sellerTransactions, setSellerTransactions] = useState([]);
   const [sellerPickupLocation, setSellerPickupLocation] = useState('b11');
   const [sellerInitialPickupLocation, setSellerInitialPickupLocation] = useState(null);
   const [sellerPickupLocations, setSellerPickupLocations] = useState([]);
   const [sellerReviewSummary, setSellerReviewSummary] = useState({ average: null, count: 0 });
   const [sellerProductsLoading, setSellerProductsLoading] = useState(false);
   const [sellerProductsError, setSellerProductsError] = useState('');
+  const [publicSeller, setPublicSeller] = useState(null);
+  const [publicSellerProducts, setPublicSellerProducts] = useState([]);
+  const [publicReviewSummary, setPublicReviewSummary] = useState({ average: null, count: 0 });
+  const [publicSellerLoading, setPublicSellerLoading] = useState(false);
+  const [publicSellerError, setPublicSellerError] = useState('');
   const [editingProduct, setEditingProduct] = useState(null);
   const [productError, setProductError] = useState(() => (supabase ? '' : getSupabaseConfigError()));
   const [isLoadingProducts, setIsLoadingProducts] = useState(Boolean(supabase));
@@ -70,12 +133,18 @@ export default function App() {
   const [productDetailFromChat, setProductDetailFromChat] = useState(false);
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const [cartItemCount, setCartItemCount] = useState(0);
+  const [notifications, setNotifications] = useState([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [onlineUserIds, setOnlineUserIds] = useState(() => new Set());
 
   useEffect(() => {
     const syncRoute = () => {
       const nextRoute = getRoute();
       setActiveTab(nextRoute.tab);
       setSelectedProductId(nextRoute.productId);
+      if (nextRoute.productId !== selectedProductId) setSelectedProduct(null);
+      setSelectedProfileId(nextRoute.profileId || null);
+      setSelectedSellerId(nextRoute.sellerId || null);
       setSelectedChatId(nextRoute.chatId || null);
       setSelectedChatPartner(null);
       if (nextRoute.tab !== 'product_detail') setProductDetailFromChat(false);
@@ -116,16 +185,50 @@ export default function App() {
   }, [currentUser?.id]);
 
   useEffect(() => {
+    if (!currentUser?.id || !supabase) {
+      setOnlineUserIds(new Set());
+      return undefined;
+    }
+    const presenceChannel = supabase.channel('spu-market-online-users', {
+      config: { presence: { key: currentUser.id } },
+    });
+    const syncPresence = () => {
+      const state = presenceChannel.presenceState();
+      setOnlineUserIds(new Set(Object.keys(state || {})));
+    };
+    presenceChannel
+      .on('presence', { event: 'sync' }, syncPresence)
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          void presenceChannel.track({ user_id: currentUser.id, online_at: new Date().toISOString() });
+        }
+      });
+    return () => {
+      void presenceChannel.untrack();
+      void supabase.removeChannel(presenceChannel);
+    };
+  }, [currentUser?.id]);
+
+  const fetchCartItemCount = async (userId) => {
+    if (!userId || !supabase) return 0;
+    const { count, error } = await supabase.from('cart_items')
+      .select('id, products!inner(id)', { count: 'exact', head: true })
+      .eq('user_id', userId);
+    if (error) {
+      console.error('Could not load cart count:', error.message);
+      return null;
+    }
+    return count || 0;
+  };
+
+  useEffect(() => {
     if (!currentUser?.id || !supabase) { setCartItemCount(0); return undefined; }
     let active = true;
     let requestNumber = 0;
     const refreshCartCount = async () => {
       const currentRequest = ++requestNumber;
-      const { count, error } = await supabase.from('cart_items')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', currentUser.id);
-      if (error) { console.error('Could not load cart count:', error.message); return; }
-      if (active && currentRequest === requestNumber) setCartItemCount(count || 0);
+      const count = await fetchCartItemCount(currentUser.id);
+      if (count !== null && active && currentRequest === requestNumber) setCartItemCount(count);
     };
     void refreshCartCount();
     const channel = supabase.channel(`bottom-nav-cart:${currentUser.id}`)
@@ -135,15 +238,83 @@ export default function App() {
   }, [currentUser?.id]);
 
   useEffect(() => {
-    if (activeTab !== 'seller' || !currentUser?.id) return;
-    const sellerPath = `/seller/${encodeURIComponent(currentUser.id)}`;
+    if (!currentUser?.id || !supabase) {
+      setNotifications([]);
+      setNotificationsLoading(false);
+      return undefined;
+    }
+    let active = true;
+    const refreshNotifications = async ({ silent = false } = {}) => {
+      if (!silent) setNotificationsLoading(true);
+      try {
+        const rows = await listNotifications(currentUser.id);
+        if (active) setNotifications(rows);
+      } catch (error) {
+        console.error('Could not load notifications:', error.message);
+      } finally {
+        if (active && !silent) setNotificationsLoading(false);
+      }
+    };
+    void refreshNotifications();
+    const channel = supabase.channel(`user-notifications:${currentUser.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${currentUser.id}` },
+        () => { void refreshNotifications({ silent: true }); },
+      )
+      .subscribe();
+    return () => { active = false; void supabase.removeChannel(channel); };
+  }, [currentUser?.id]);
+
+  useEffect(() => {
+    if (!currentUser?.id || notifications.length === 0) return undefined;
+    const now = Date.now();
+    let earliestExpiry = null;
+
+    for (const item of notifications) {
+      if (!item.is_read || !item.read_at) continue;
+      const readTime = new Date(item.read_at).getTime();
+      if (Number.isNaN(readTime)) continue;
+      const expiresAt = readTime + READ_NOTIFICATION_TTL_MS;
+      if (earliestExpiry === null || expiresAt < earliestExpiry) {
+        earliestExpiry = expiresAt;
+      }
+    }
+
+    if (earliestExpiry === null) return undefined;
+
+    const delay = Math.max(0, earliestExpiry - now);
+    const timer = window.setTimeout(() => {
+      const checkNow = Date.now();
+      setNotifications((previous) => previous.filter((item) => !isNotificationExpired(item, checkNow)));
+      void deleteExpiredReadNotifications(currentUser.id);
+    }, delay);
+
+    return () => window.clearTimeout(timer);
+  }, [currentUser?.id, notifications]);
+
+  useEffect(() => {
+    if (activeTab !== 'seller') return;
+    const targetId = selectedSellerId || currentUser?.id;
+    if (!targetId) return;
+    const sellerPath = `/seller/${encodeURIComponent(targetId)}`;
     if (window.location.pathname === sellerPath) return;
     if (window.location.pathname.startsWith('/seller/')) {
       window.history.replaceState({}, '', sellerPath);
     } else {
       window.history.pushState({}, '', sellerPath);
     }
-  }, [activeTab, currentUser?.id]);
+  }, [activeTab, selectedSellerId, currentUser?.id]);
+
+  const navigateToSeller = (sellerId) => {
+    if (!sellerId) return;
+    setPublicSeller(null);
+    setPublicSellerProducts([]);
+    window.history.pushState({}, '', `/seller/${encodeURIComponent(sellerId)}`);
+    setSelectedSellerId(sellerId);
+    setActiveTab('seller');
+    window.scrollTo(0, 0);
+  };
 
   const navigateToProducts = () => {
     setProductDetailFromChat(false);
@@ -162,30 +333,43 @@ export default function App() {
   const navigateToProduct = (product) => {
     if (!product?.id) return;
     setProductDetailFromChat(false);
+    setSelectedProduct(product);
+    setSelectedProductId(String(product.id));
     window.history.pushState({}, '', `/products/${encodeURIComponent(product.id)}`);
     setActiveTab('product_detail');
-    setSelectedProductId(String(product.id));
     window.scrollTo(0, 0);
   };
   const navigateHome = () => {
     window.history.pushState({}, '', '/home');
     setActiveTab('home');
     setSelectedProductId(null);
+    setSelectedProfileId(null);
     window.scrollTo(0, 0);
   };
-  const navigateToLogin = () => {
+  const navigateToLogin = (pendingAction = null) => {
+    savePendingAuthAction(pendingAction);
+    const nextNavTab = pendingAction?.type === 'tab' && ['chat', 'cart', 'profile'].includes(pendingAction.tab)
+      ? pendingAction.tab
+      : null;
+    setLoginPendingTab(nextNavTab);
     if (window.location.pathname !== '/login') window.history.pushState({}, '', '/login');
     setActiveTab('login');
     window.scrollTo(0, 0);
   };
+  const navigateToProfile = (profileId = currentUser?.id) => {
+    if (!profileId) {
+      navigateToLogin();
+      return;
+    }
+    window.history.pushState({}, '', `/profile/${encodeURIComponent(profileId)}`);
+    setSelectedProfileId(profileId);
+    setActiveTab('profile');
+    window.scrollTo(0, 0);
+  };
 
   const refreshCartItemCount = async () => {
-    if (!currentUser?.id || !supabase) { setCartItemCount(0); return; }
-    const { count, error } = await supabase.from('cart_items')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', currentUser.id);
-    if (error) { console.error('Could not refresh cart count:', error.message); return; }
-    setCartItemCount(count || 0);
+    const count = await fetchCartItemCount(currentUser?.id);
+    if (count !== null) setCartItemCount(count);
   };
 
   useEffect(() => {
@@ -211,6 +395,140 @@ export default function App() {
     if (authHash.has('error')) {
       window.history.replaceState({}, '', `${window.location.pathname}${window.location.search}`);
     }
+    const executePendingAuthAction = async (pendingAction, mappedUser) => {
+      if (!isMounted || !pendingAction || !mappedUser?.id) return;
+      const isSellerUser = mappedUser.role?.toLowerCase() === 'seller';
+
+      try {
+        if (pendingAction.type === 'tab') {
+          const targetTab = pendingAction.tab;
+          if (targetTab === 'register') {
+            setActiveTab(isSellerUser ? 'seller' : 'register');
+          } else if (targetTab === 'seller') {
+            setActiveTab(isSellerUser ? 'seller' : 'register');
+          } else if (targetTab === 'add_product') {
+            setEditingProduct(null);
+            setActiveTab(isSellerUser ? 'add_product' : 'register');
+          } else if (targetTab === 'chat') {
+            window.history.pushState({}, '', '/chat');
+            setSelectedChatId(null);
+            setSelectedChatPartner(null);
+            setActiveTab('chat');
+          } else if (targetTab === 'cart') {
+            window.history.pushState({}, '', '/cart');
+            setActiveTab('cart');
+          } else if (targetTab === 'profile') {
+            window.history.pushState({}, '', `/profile/${encodeURIComponent(mappedUser.id)}`);
+            setSelectedProfileId(mappedUser.id);
+            setActiveTab('profile');
+          } else if (targetTab) {
+            setActiveTab(targetTab);
+          }
+          window.scrollTo(0, 0);
+          return;
+        }
+
+        if (pendingAction.type === 'product_detail' && pendingAction.productId) {
+          const pid = String(pendingAction.productId);
+          window.history.pushState({}, '', `/products/${encodeURIComponent(pid)}`);
+          setSelectedProductId(pid);
+          setActiveTab('product_detail');
+          window.scrollTo(0, 0);
+          return;
+        }
+
+        if (pendingAction.type === 'favorite_product' && pendingAction.productId) {
+          const pid = String(pendingAction.productId);
+          try {
+            const alreadySaved = await isProductFavorited(pid, mappedUser.id);
+            if (!alreadySaved) {
+              await toggleFavoriteProduct(pid, mappedUser.id);
+            }
+          } catch (favError) {
+            console.warn('Could not complete pending favorite:', favError);
+          }
+          if (!isMounted) return;
+          window.history.pushState({}, '', `/products/${encodeURIComponent(pid)}`);
+          setSelectedProductId(pid);
+          setActiveTab('product_detail');
+          window.scrollTo(0, 0);
+          return;
+        }
+
+        if (pendingAction.type === 'add_to_cart' && pendingAction.productId) {
+          const pid = String(pendingAction.productId);
+          const product = await getProductById(pid);
+          if (!isMounted) return;
+          if (!product) {
+            setActiveTab('products');
+            window.scrollTo(0, 0);
+            return;
+          }
+          if (product.sellerId === mappedUser.id) {
+            window.history.pushState({}, '', `/products/${encodeURIComponent(pid)}`);
+            setSelectedProduct(product);
+            setSelectedProductId(pid);
+            setActiveTab('product_detail');
+            window.scrollTo(0, 0);
+            return;
+          }
+          const { error } = await supabase
+            .from('cart_items')
+            .upsert(
+              { user_id: mappedUser.id, product_id: product.id },
+              { onConflict: 'user_id,product_id', ignoreDuplicates: true }
+            );
+          if (error) {
+            window.alert(error.message);
+            return;
+          }
+          const count = await fetchCartItemCount(mappedUser.id);
+          if (!isMounted) return;
+          if (count !== null) setCartItemCount(count);
+          window.history.pushState({}, '', `/cart?selected=${encodeURIComponent(product.id)}`);
+          setActiveTab('cart');
+          window.scrollTo(0, 0);
+          return;
+        }
+
+        if (pendingAction.type === 'open_product_chat' && pendingAction.productId) {
+          const pid = String(pendingAction.productId);
+          const product = await getProductById(pid);
+          if (!isMounted || !product) return;
+          if (product.sellerId === mappedUser.id) {
+            window.history.pushState({}, '', `/products/${encodeURIComponent(pid)}`);
+            setSelectedProduct(product);
+            setSelectedProductId(pid);
+            setActiveTab('product_detail');
+            window.scrollTo(0, 0);
+            return;
+          }
+          const { data: conversationId, error } = await supabase.rpc('open_marketplace_conversation', {
+            p_product_id: product.id,
+          });
+          if (!isMounted) return;
+          if (error) {
+            window.alert(error.message);
+            return;
+          }
+          window.history.pushState({}, '', `/chat/${encodeURIComponent(conversationId)}`);
+          setSelectedChatId(conversationId);
+          setSelectedChatPartner({
+            name: product.seller,
+            productTitle: product.title,
+            image: product.image,
+            price: product.price,
+            location: product.location,
+            draftMessage: '',
+          });
+          setActiveTab('chat_room');
+          window.scrollTo(0, 0);
+        }
+      } catch (actionError) {
+        console.error('Could not execute pending auth action:', actionError);
+      }
+    };
+
     const syncUser = async (authUser, authEvent = null) => {
       const syncId = ++userSyncId;
       if (!authUser) {
@@ -238,6 +556,7 @@ export default function App() {
             console.error('Could not restore pending seller registration:', storageError.message);
           }
         }
+        let registrationCompletedRedirect = false;
         if (registration.seller_registration_pending === true) {
           if (profile.role === 'seller') {
             if (registrationCameFromStorage) window.localStorage.removeItem(pendingRegistrationKey);
@@ -249,6 +568,7 @@ export default function App() {
                 studentId: registration.student_id || '',
                 displayName: registration.display_name || '',
                 faculty: registration.faculty || '',
+                major: registration.major || '',
                 contact: registration.contact || '',
                 memberType: registration.member_type || 'student',
                 identityCheckConsent: registration.identity_check_consent === true,
@@ -260,10 +580,16 @@ export default function App() {
               profile = await registrationPromise;
               if (registrationCameFromStorage) window.localStorage.removeItem(pendingRegistrationKey);
               else void supabase.auth.updateUser({ data: { seller_registration_pending: false } });
-              if (isMounted && syncId === userSyncId) setActiveTab('seller');
+              if (isMounted && syncId === userSyncId) {
+                setActiveTab('seller');
+                registrationCompletedRedirect = true;
+              }
             } catch (registrationError) {
               console.error('Could not complete seller registration:', registrationError.message);
-              if (isMounted && syncId === userSyncId) setActiveTab('register');
+              if (isMounted && syncId === userSyncId) {
+                setActiveTab('register');
+                registrationCompletedRedirect = true;
+              }
             } finally {
               if (pendingSellerRegistrations.current.get(authUser.id) === registrationPromise) {
                 pendingSellerRegistrations.current.delete(authUser.id);
@@ -271,7 +597,18 @@ export default function App() {
             }
           }
         }
-        if (isMounted && syncId === userSyncId) setCurrentUser(mapAuthUser(authUser, profile));
+        if (isMounted && syncId === userSyncId) {
+          const mappedUser = mapAuthUser(authUser, profile);
+          setCurrentUser(mappedUser);
+          if (registrationCompletedRedirect) {
+            savePendingAuthAction(null);
+          } else {
+            const pendingAction = consumePendingAuthAction();
+            if (pendingAction) {
+              void executePendingAuthAction(pendingAction, mappedUser);
+            }
+          }
+        }
       } catch (error) {
         console.error('Could not load user profile:', error.message);
       }
@@ -326,14 +663,21 @@ export default function App() {
     let isCurrent = true;
     setSellerProductsLoading(!loadedSellerData.current.has(currentUser.id));
     setSellerProductsError('');
-    Promise.all([listSellerProducts(currentUser.id), getSellerPickupLocation(currentUser), listPickupLocations(), listSellerReviewSummary(currentUser.id)])
-      .then(([rows, pickupLocation, pickupLocations, reviewSummary]) => {
+    Promise.all([
+      listSellerProducts(currentUser.id),
+      getSellerPickupLocation(currentUser),
+      listPickupLocations(),
+      listSellerReviewSummary(currentUser.id),
+      listSellerTransactions(currentUser.id),
+    ])
+      .then(([rows, pickupLocation, pickupLocations, reviewSummary, transactions]) => {
         if (!isCurrent) return;
         setSellerProducts(rows);
         setSellerPickupLocation(pickupLocation);
         setSellerInitialPickupLocation((initialLocation) => initialLocation || pickupLocation);
         setSellerPickupLocations(pickupLocations);
         setSellerReviewSummary(reviewSummary);
+        setSellerTransactions(transactions || []);
         loadedSellerData.current.add(currentUser.id);
       })
       .catch((error) => { if (isCurrent) setSellerProductsError(error.message || 'Could not load seller profile.'); })
@@ -341,11 +685,58 @@ export default function App() {
     return () => { isCurrent = false; };
   }, [activeTab, currentUser?.id, currentUser?.role]);
 
+  useEffect(() => {
+    if (activeTab !== 'seller') return undefined;
+    const targetId = selectedSellerId || currentUser?.id;
+    if (!targetId) return undefined;
+    const isOwner = Boolean(currentUser?.id && targetId === currentUser.id);
+    if (isOwner) return undefined;
+
+    let isCurrent = true;
+    setPublicSellerLoading(true);
+    setPublicSellerError('');
+
+    Promise.all([
+      supabase
+        .from('profiles')
+        .select('id, student_id, display_name, faculty, is_verified, member_type, avatar_url')
+        .eq('id', targetId)
+        .maybeSingle()
+        .then(async (res) => {
+          if (!res.error) return res;
+          return supabase
+            .from('profiles')
+            .select('id, student_id, display_name, faculty, is_verified, member_type')
+            .eq('id', targetId)
+            .maybeSingle();
+        }),
+      listProducts({ sellerId: targetId }),
+      listSellerReviewSummary(targetId),
+    ])
+      .then(([{ data: profile, error: profileErr }, prods, reviews]) => {
+        if (!isCurrent) return;
+        if (profileErr) throw profileErr;
+        setPublicSeller(profile || { id: targetId, display_name: 'ผู้ขาย SPU' });
+        setPublicSellerProducts(prods || []);
+        setPublicReviewSummary(reviews || { average: null, count: 0 });
+      })
+      .catch((err) => {
+        if (!isCurrent) return;
+        console.error('Could not load public seller profile:', err);
+        setPublicSellerError('ไม่สามารถโหลดข้อมูลร้านค้าของผู้ขายได้');
+      })
+      .finally(() => {
+        if (isCurrent) setPublicSellerLoading(false);
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [activeTab, selectedSellerId, currentUser?.id]);
+
   const handleSelectTab = (tab) => {
     if (tab === 'home') {
-      setActiveTab('home');
-      setSelectedProductId(null);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      navigateHome();
       return;
     }
     if (tab === 'chat' || tab === 'cart' || tab === 'profile') {
@@ -355,8 +746,14 @@ export default function App() {
         setSelectedChatPartner(null);
       }
       if (tab === 'cart' && currentUser) window.history.pushState({}, '', '/cart');
-      if (!currentUser) navigateToLogin();
-      else setActiveTab(tab);
+      if (!currentUser) navigateToLogin({ type: 'tab', tab });
+      else {
+        if (tab === 'profile') {
+          navigateToProfile();
+          return;
+        }
+        setActiveTab(tab);
+      }
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
@@ -366,24 +763,25 @@ export default function App() {
 
   const handleLoginSuccess = (authUser) => {
     setCurrentUser(mapAuthUser(authUser));
-    setActiveTab('profile');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    navigateToProfile(authUser.id);
   };
 
-  const handleLogout = async () => {
-    if (!window.confirm('Sign out of SPU Market?')) return;
+  const handleLogout = async ({ skipConfirm = false } = {}) => {
+    if (!skipConfirm && !window.confirm('Sign out of SPU Market?')) return;
     const { error } = await supabase.auth.signOut();
     if (error) {
+      if (skipConfirm) throw error;
       window.alert(error.message);
       return;
     }
+    savePendingAuthAction(null);
     setCurrentUser(null);
     setActiveTab('home');
   };
 
   const handleSwitchToSeller = () => {
     if (!currentUser) {
-      navigateToLogin();
+      navigateToLogin({ type: 'tab', tab: 'seller' });
     } else if (currentUser.role?.toLowerCase() === 'seller') {
       setActiveTab('seller');
     } else {
@@ -396,9 +794,69 @@ export default function App() {
     const chatId = conversation?.id || conversation;
     window.history.pushState({}, '', `/chat/${encodeURIComponent(chatId)}`);
     setSelectedChatId(chatId);
-    setSelectedChatPartner(conversation ? { name: conversation.name, productTitle: conversation.productTitle, image: conversation.image, price: conversation.price, location: conversation.location, draftMessage: conversation.draftMessage || '' } : null);
+    setSelectedChatPartner(conversation && typeof conversation === 'object' ? { name: conversation.name, productTitle: conversation.productTitle, image: conversation.image, price: conversation.price, location: conversation.location, draftMessage: conversation.draftMessage || '' } : null);
     setActiveTab('chat_room');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const unreadNotificationCount = notifications.filter((item) => !item.is_read).length;
+
+  const handleMarkAllNotificationsRead = () => {
+    if (!currentUser?.id) return;
+    const nowIso = new Date().toISOString();
+    setNotifications((previous) => previous.map((item) => (
+      item.is_read ? item : { ...item, is_read: true, read_at: nowIso }
+    )));
+    void markAllNotificationsRead(currentUser.id);
+  };
+
+  const handleSelectNotification = (item) => {
+    if (!item) return;
+    if (!item.is_read && currentUser?.id) {
+      const nowIso = new Date().toISOString();
+      setNotifications((previous) => previous.map((row) => (
+        row.id === item.id ? { ...row, is_read: true, read_at: nowIso } : row
+      )));
+      void markNotificationRead(item.id, currentUser.id);
+    }
+
+    if ((item.target_type === 'chat' || item.target_type === 'pickup') && item.target_id) {
+      handleOpenChat(item.target_id);
+      return;
+    }
+    if (item.target_type === 'seller_reviews') {
+      if (item.target_id && item.target_id !== currentUser?.id) {
+        navigateToSeller(item.target_id);
+      } else {
+        handleSwitchToSeller();
+      }
+      return;
+    }
+    if (item.target_type === 'pickup') {
+      navigateToProfile();
+    }
+  };
+
+  const handleOpenProductChat = async (product) => {
+    if (!currentUser) {
+      navigateToLogin(product?.id ? { type: 'open_product_chat', productId: String(product.id) } : null);
+      return;
+    }
+    if (!product?.id || product.sellerId === currentUser.id) return;
+
+    const { data: conversationId, error } = await supabase.rpc('open_marketplace_conversation', { p_product_id: product.id });
+    if (error) {
+      window.alert(error.message);
+      return;
+    }
+    handleOpenChat({
+      id: conversationId,
+      name: product.seller,
+      productTitle: product.title,
+      image: product.image,
+      price: product.price,
+      location: product.location,
+    });
   };
 
   const handleCreateProduct = async (productInput) => {
@@ -467,14 +925,73 @@ export default function App() {
     }
   };
 
+  const handleMarkSellerProductSold = async (product) => {
+    try {
+      setSellerProductsError('');
+      await markProductAsSold(product.id, currentUser);
+      setSellerProducts((previous) =>
+        previous.map((item) => (item.id === product.id ? { ...item, status: 'sold' } : item))
+      );
+      setProducts((previous) => previous.filter((item) => item.id !== product.id));
+      setProductsUpdatedAt(new Date());
+
+      if (currentUser?.id) {
+        const trans = await listSellerTransactions(currentUser.id);
+        setSellerTransactions(trans || []);
+      }
+    } catch (error) {
+      setSellerProductsError(error.message || 'เปลี่ยนสถานะเป็นขายแล้วไม่สำเร็จ');
+      throw error;
+    }
+  };
+
+  const handleUpdateSellerProductStatus = async (product, newStatus) => {
+    try {
+      setSellerProductsError('');
+      await updateProductStatus(product.id, newStatus, currentUser);
+      const updated = { ...product, status: newStatus };
+      setSellerProducts((previous) =>
+        previous.map((item) => (item.id === product.id ? updated : item))
+      );
+      if (newStatus === 'active') {
+        setProducts((previous) => [updated, ...previous.filter((item) => item.id !== product.id)]);
+      } else {
+        setProducts((previous) => previous.filter((item) => item.id !== product.id));
+      }
+      setProductsUpdatedAt(new Date());
+
+      if (currentUser?.id) {
+        const trans = await listSellerTransactions(currentUser.id);
+        setSellerTransactions(trans || []);
+      }
+    } catch (error) {
+      setSellerProductsError(error.message || 'อัปเดตสถานะสินค้าไม่สำเร็จ');
+      throw error;
+    }
+  };
+
   return (
     <div className="app-viewport">
       <main className="market-app-shell" role="main">
         {activeTab === 'home' && (
           <HomePage
-            onNavigateToRegister={() => setActiveTab('register')}
+            onNavigateToRegister={() => {
+              if (!currentUser) {
+                navigateToLogin({ type: 'tab', tab: 'register' });
+                return;
+              }
+              setActiveTab('register');
+            }}
             onNavigateToLogin={navigateToLogin}
             onNavigateToSeller={handleSwitchToSeller}
+            onNavigateToAddProduct={() => {
+              setEditingProduct(null);
+              if (!currentUser) {
+                navigateToLogin({ type: 'tab', tab: 'add_product' });
+                return;
+              }
+              setActiveTab('add_product');
+            }}
             onNavigateToProducts={navigateToProducts}
             onSelectProduct={navigateToProduct}
             currentUser={currentUser}
@@ -483,6 +1000,11 @@ export default function App() {
             productsUpdatedAt={productsUpdatedAt}
             productError={productError}
             isLoadingProducts={isLoadingProducts}
+            notificationCount={unreadNotificationCount}
+            notifications={notifications}
+            notificationsLoading={notificationsLoading}
+            onSelectNotification={handleSelectNotification}
+            onMarkAllNotificationsRead={handleMarkAllNotificationsRead}
           />
         )}
 
@@ -497,7 +1019,10 @@ export default function App() {
 
         {activeTab === 'login' && (
           <LoginPage
-            onBack={navigateHome}
+            onBack={() => {
+              savePendingAuthAction(null);
+              navigateHome();
+            }}
             onLoginSuccess={handleLoginSuccess}
           />
         )}
@@ -506,29 +1031,85 @@ export default function App() {
           <ProfilePage
             currentUser={currentUser}
             onLogout={handleLogout}
-            onBackToHome={() => setActiveTab('home')}
+            onBackToHome={navigateHome}
             onSwitchToSeller={handleSwitchToSeller}
+            onNavigateToLogin={() => navigateToLogin({ type: 'tab', tab: 'profile' })}
+            onOpenChat={handleOpenChat}
+            onSelectProduct={navigateToProduct}
+            onNavigateToProducts={navigateToProducts}
+            onNavigateToSeller={navigateToSeller}
+            onUpdateProfile={async ({ displayName, faculty, major, contact, avatarFile }) => {
+              if (!currentUser?.id) throw new Error('กรุณาเข้าสู่ระบบก่อนแก้ไขโปรไฟล์');
+              let nextAvatarUrl;
+              if (avatarFile) {
+                nextAvatarUrl = await uploadProfileAvatar(avatarFile, currentUser);
+              }
+              const updatedProfile = await updateUserProfile(currentUser, {
+                displayName,
+                faculty,
+                major,
+                contact,
+                ...(nextAvatarUrl !== undefined ? { avatarUrl: nextAvatarUrl } : {}),
+              });
+              setCurrentUser((previous) => (
+                previous
+                  ? {
+                      ...previous,
+                      displayName: updatedProfile.display_name || displayName,
+                      faculty: updatedProfile.faculty ?? faculty,
+                      major: updatedProfile.major ?? major,
+                      contact: updatedProfile.contact ?? contact,
+                      lineId: updatedProfile.contact ?? contact,
+                      avatar: updatedProfile.avatar_url || nextAvatarUrl || previous.avatar || '',
+                    }
+                  : previous
+              ));
+              void refreshProductsRef.current();
+            }}
           />
         )}
 
-        {activeTab === 'seller' && (
-          <SellerDashboardPage
-            currentUser={currentUser}
-            userProducts={sellerProducts}
-            defaultPickupLocation={sellerPickupLocation}
-            initialPickupLocation={sellerInitialPickupLocation || sellerPickupLocation}
-            pickupLocations={sellerPickupLocations}
-            reviewSummary={sellerReviewSummary}
-            isLoading={sellerProductsLoading}
-            error={sellerProductsError}
-            onBack={() => setActiveTab('profile')}
-            onAddNewProduct={() => { setEditingProduct(null); setActiveTab(currentUser ? 'add_product' : 'login'); }}
-            onEditProduct={(product) => { setEditingProduct(product); setActiveTab('add_product'); }}
-            onDeleteProduct={handleDeleteSellerProduct}
-            onRestoreProduct={handleRestoreSellerProduct}
-            onChangePickupLocation={handleChangeSellerPickupLocation}
-          />
-        )}
+        {activeTab === 'seller' && (() => {
+          const targetId = selectedSellerId || currentUser?.id;
+          const isOwner = Boolean(currentUser?.id && targetId === currentUser.id);
+          return (
+            <SellerDashboardPage
+              currentUser={isOwner ? currentUser : publicSeller}
+              isOwner={isOwner}
+              userProducts={isOwner ? sellerProducts : publicSellerProducts}
+              transactions={isOwner ? sellerTransactions : []}
+              defaultPickupLocation={sellerPickupLocation}
+              initialPickupLocation={sellerInitialPickupLocation || sellerPickupLocation}
+              pickupLocations={sellerPickupLocations}
+              reviewSummary={isOwner ? sellerReviewSummary : publicReviewSummary}
+              isLoading={isOwner ? sellerProductsLoading : publicSellerLoading}
+              error={isOwner ? sellerProductsError : publicSellerError}
+              onBack={() => {
+                if (window.history.length > 1) {
+                  window.history.back();
+                } else {
+                  navigateToProfile();
+                }
+              }}
+              onSelectProduct={navigateToProduct}
+              onAddNewProduct={() => {
+                setEditingProduct(null);
+                if (!currentUser) {
+                  navigateToLogin({ type: 'tab', tab: 'add_product' });
+                  return;
+                }
+                setActiveTab('add_product');
+              }}
+              onEditProduct={(product) => { setEditingProduct(product); setActiveTab('add_product'); }}
+              onDeleteProduct={handleDeleteSellerProduct}
+              onRestoreProduct={handleRestoreSellerProduct}
+              onChangePickupLocation={handleChangeSellerPickupLocation}
+              onMarkAsSold={handleMarkSellerProductSold}
+              onUpdateProductStatus={handleUpdateSellerProductStatus}
+              onOpenChat={handleOpenChat}
+            />
+          );
+        })()}
 
         {activeTab === 'add_product' && (
           <AddProductPage
@@ -541,44 +1122,52 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'product_detail' && (
-          <ProductDetailPage
-            product={products.find((product) => String(product.id) === selectedProductId)}
-            isOwner={products.find((product) => String(product.id) === selectedProductId)?.sellerId === currentUser?.id}
-            onBack={() => {
-              if (productDetailFromChat && selectedChatId) {
+        {activeTab === 'product_detail' && (() => {
+          const detailProduct = selectedProduct || products.find((product) => String(product.id) === selectedProductId);
+          return (
+            <ProductDetailPage
+              product={detailProduct}
+              productId={selectedProductId}
+              isOwner={detailProduct?.sellerId === currentUser?.id}
+              currentUser={currentUser}
+              onlineUserIds={onlineUserIds}
+              onNavigateToLogin={(action) => navigateToLogin(
+                isValidPendingAuthAction(action)
+                  ? action
+                  : (selectedProductId ? { type: 'product_detail', productId: String(selectedProductId) } : null)
+              )}
+              onNavigateToSeller={navigateToSeller}
+              onBack={() => {
+                if (productDetailFromChat && selectedChatId) {
+                  setProductDetailFromChat(false);
+                }
+                if (window.history.length > 1) {
+                  window.history.back();
+                } else {
+                  navigateToProducts();
+                }
+              }}
+              onAddToCart={async (product) => {
+                if (!currentUser) {
+                  navigateToLogin(product?.id ? { type: 'add_to_cart', productId: String(product.id) } : null);
+                  return;
+                }
+                if (product.sellerId === currentUser.id) return;
+                const { error } = await supabase.from('cart_items').upsert({ user_id: currentUser.id, product_id: product.id }, { onConflict: 'user_id,product_id', ignoreDuplicates: true });
+                if (error) { window.alert(error.message); return; }
+                await refreshCartItemCount();
+                window.history.pushState({}, '', `/cart?selected=${encodeURIComponent(product.id)}`);
+                setActiveTab('cart');
+              }}
+              onNavigateToChat={() => {
+                const product = detailProduct || products.find((item) => String(item.id) === selectedProductId);
+                if (!product) return;
                 setProductDetailFromChat(false);
-                window.history.back();
-                return;
-              }
-              navigateToProducts();
-            }}
-            onAddToCart={async (product) => {
-              if (!currentUser) { navigateToLogin(); return; }
-              if (product.sellerId === currentUser.id) return;
-              const { error } = await supabase.from('cart_items').upsert({ user_id: currentUser.id, product_id: product.id }, { onConflict: 'user_id,product_id', ignoreDuplicates: true });
-              if (error) { window.alert(error.message); return; }
-              await refreshCartItemCount();
-              window.history.pushState({}, '', `/cart?selected=${encodeURIComponent(product.id)}`);
-              setActiveTab('cart');
-            }}
-            onNavigateToChat={async () => {
-              if (!currentUser) {
-                navigateToLogin();
-                return;
-              }
-              const product = products.find((item) => String(item.id) === selectedProductId);
-              if (!product || product.sellerId === currentUser.id) return;
-              const { data: conversationId, error } = await supabase.rpc('open_marketplace_conversation', { p_product_id: product.id });
-              if (error) { window.alert(error.message); return; }
-              window.history.pushState({}, '', `/chat/${encodeURIComponent(conversationId)}`);
-              setSelectedChatId(conversationId);
-              setSelectedChatPartner({ name: product.seller, productTitle: product.title, image: product.image, price: product.price, location: product.location });
-              setProductDetailFromChat(false);
-              setActiveTab('chat_room');
-            }}
-          />
-        )}
+                void handleOpenProductChat(product);
+              }}
+            />
+          );
+        })()}
 
         {activeTab === 'chat' && (
           <ChatListPage currentUser={currentUser} onSelectChat={handleOpenChat} onNavigateHome={navigateHome} />
@@ -589,6 +1178,7 @@ export default function App() {
             conversationId={selectedChatId}
             currentUser={currentUser}
             chatPartner={selectedChatPartner}
+            onlineUserIds={onlineUserIds}
             draftMessage={selectedChatPartner?.draftMessage || ''}
             onBack={navigateToChatList}
             onViewProduct={(productId) => {
@@ -611,12 +1201,21 @@ export default function App() {
             onNavigateProducts={navigateToProducts}
             onBack={() => window.history.length > 1 ? window.history.back() : navigateHome()}
             onOpenChat={handleOpenChat}
+            onOpenProductChat={handleOpenProductChat}
+            onSelectProduct={navigateToProduct}
+            onSelectSeller={navigateToSeller}
           />
         )}
 
         {activeTab !== 'product_detail' && activeTab !== 'products' && activeTab !== 'chat_room' && activeTab !== 'add_product' && (
           <BottomNav
-            activeTab={activeTab === 'seller' ? 'profile' : activeTab}
+            activeTab={
+              activeTab === 'seller'
+                ? 'profile'
+                : activeTab === 'login'
+                  ? (loginPendingTab || 'login')
+                  : activeTab
+            }
             onSelectTab={handleSelectTab}
             cartCount={cartItemCount}
             unreadMessageCount={unreadMessageCount}

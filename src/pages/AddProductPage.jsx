@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  BookOpen, Camera, Check, ChevronDown, CircleHelp,
-  Home, Laptop, MapPin, Package, Palette, Shirt, Trash2, UploadCloud,
+  BookOpen, Camera, Check, CircleHelp,
+  Home, Laptop, Package, Palette, Shirt, Trash2, UploadCloud,
 } from 'lucide-react';
 import { listCategories } from '../lib/marketplace';
 import { SkeletonBlock, SkeletonReveal } from '../components/spectrumui/skeleton-reveal';
+import { QuantityStepper } from '../components/spectrumui/quantity-stepper';
 
 const categoryIcons = {
   books: BookOpen,
@@ -13,29 +14,17 @@ const categoryIcons = {
   stationery: Palette,
   dorm: Home,
 };
-const categoryLabels = {
-  books: 'หนังสือและชีทเรียน',
-  uniform: 'เครื่องแบบและเสื้อผ้า',
-  it: 'ไอทีและอิเล็กทรอนิกส์',
-  stationery: 'เครื่องเขียนและอุปกรณ์ศิลปะ',
-  dorm: 'ของใช้หอพักและของใช้ทั่วไป',
-};
-
-const conditions = [
-  { id: 'new', title: 'ใหม่ 100%', detail: 'ยังไม่เคยใช้งาน' },
-  { id: 'excellent', title: 'สภาพดีมาก 90%+', detail: 'ใช้งานน้อย' },
-  { id: 'used', title: 'ใช้งานได้ปกติ', detail: 'มีร่องรอยการใช้งาน' },
-];
 
 function getInitialImages(product) {
   if (product?.images?.length) return product.images;
   return product?.image ? [product.image] : [];
 }
 
-export default function AddProductPage({ onBack, onSubmit, product, defaultLocation = 'b11', defaultLocationName = '' }) {
+export default function AddProductPage({ onBack, onSubmit, product, defaultLocation = 'b11' }) {
   const [title, setTitle] = useState(product?.title || '');
   const [price, setPrice] = useState(product?.price ? String(product.price) : '');
   const [description, setDescription] = useState(product?.description || '');
+  const [quantity, setQuantity] = useState(product?.quantity ? Math.min(10, Math.max(1, Number(product.quantity))) : 1);
   const location = defaultLocation;
   const [category, setCategory] = useState(product?.category || '');
   const [categories, setCategories] = useState([]);
@@ -43,8 +32,6 @@ export default function AddProductPage({ onBack, onSubmit, product, defaultLocat
   const [categoryError, setCategoryError] = useState('');
   const [savedImages, setSavedImages] = useState(getInitialImages(product));
   const [newImages, setNewImages] = useState([]);
-  const [conditionTag, setConditionTag] = useState(product?.conditionTag || 'used');
-  const [deliveryType, setDeliveryType] = useState(product?.deliveryType === 'shipping' ? 'shipping' : 'pickup');
   const [imageError, setImageError] = useState('');
   const [submitError, setSubmitError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -118,6 +105,7 @@ export default function AddProductPage({ onBack, onSubmit, product, defaultLocat
       await onSubmit({
         title: title.trim(),
         price: Number(price),
+        quantity: Math.min(10, Math.max(1, Number(quantity) || 1)),
         status,
         createdAt: product?.createdAt || new Date().toISOString(),
         imageUrls: savedImages,
@@ -126,8 +114,7 @@ export default function AddProductPage({ onBack, onSubmit, product, defaultLocat
         description: description.trim(),
         location,
         category,
-        conditionTag,
-        deliveryType,
+        deliveryType: 'pickup',
       });
     } catch (error) {
       setSubmitError(error.message || 'บันทึกสินค้าไม่สำเร็จ กรุณาลองใหม่');
@@ -136,10 +123,6 @@ export default function AddProductPage({ onBack, onSubmit, product, defaultLocat
       setSubmittingStatus('');
     }
   };
-
-  const conditionOptions = conditions.some((item) => item.id === conditionTag)
-    ? conditions
-    : [...conditions, { id: conditionTag, title: conditionTag, detail: 'สภาพสินค้าปัจจุบัน' }];
 
   return (
     <div className="add-product-page stitch-add-page">
@@ -172,7 +155,6 @@ export default function AddProductPage({ onBack, onSubmit, product, defaultLocat
         </section>
 
         <section className="stitch-form-card stitch-product-fields">
-          <div className="stitch-store-pickup-note"><MapPin size={16} /><span><strong>จุดนัดรับประจำร้าน</strong><small>{defaultLocationName || 'ใช้จุดนัดรับหลักที่ตั้งค่าไว้ในร้านค้า'}</small></span><span>อ้างอิงจากร้าน</span></div>
           <label className="stitch-field">
             <span>ชื่อสินค้า <b>*</b></span>
             <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="เช่น หนังสือเรียนหรืออุปกรณ์ไอที" maxLength={120} required />
@@ -181,46 +163,42 @@ export default function AddProductPage({ onBack, onSubmit, product, defaultLocat
           <fieldset className="stitch-category-field">
             <legend>หมวดหมู่สินค้า <b>*</b><span>เลือก 1 หมวดหมู่</span></legend>
             <SkeletonReveal loading={isLoadingCategories} skeleton={<div className="stitch-category-grid stitch-category-skeleton" aria-hidden="true">{Array.from({ length: 5 }, (_, index) => <SkeletonBlock key={index} />)}</div>}>
-            <div className="stitch-category-grid">
-              {categories.map((item) => {
-                const Icon = categoryIcons[item.slug] || Package;
-                return (
-                  <button key={item.id} type="button" className={category === item.slug ? 'selected' : ''} aria-pressed={category === item.slug} onClick={() => setCategory(item.slug)}>
-                    <Icon size={16} /><span>{categoryLabels[item.slug] || item.name}</span>{category === item.slug && <Check size={14} />}
-                  </button>
-                );
-              })}
-            </div>
-            {categoryError && <small className="add-product-error" role="alert">{categoryError}</small>}
-            {!isLoadingCategories && !categoryError && !categories.length && <small className="add-product-error" role="alert">ไม่พบหมวดหมู่ในฐานข้อมูล</small>}
+              <div className="stitch-category-grid">
+                {categories.map((item) => {
+                  const Icon = categoryIcons[item.slug] || Package;
+                  return (
+                    <button key={item.id} type="button" className={category === item.slug ? 'selected' : ''} aria-pressed={category === item.slug} onClick={() => setCategory(item.slug)}>
+                      <Icon size={16} /><span>{item.name || item.category_name}</span>{category === item.slug && <Check size={14} />}
+                    </button>
+                  );
+                })}
+              </div>
+              {categoryError && <small className="add-product-error" role="alert">{categoryError}</small>}
+              {!isLoadingCategories && !categoryError && !categories.length && <small className="add-product-error" role="alert">ไม่พบหมวดหมู่ในฐานข้อมูล</small>}
             </SkeletonReveal>
           </fieldset>
-
-          <fieldset className="stitch-condition-field">
-            <legend>สภาพสินค้า <b>*</b></legend>
-            <div className="stitch-condition-grid">
-              {conditionOptions.map((condition) => (
-                <button key={condition.id} type="button" className={conditionTag === condition.id ? 'selected' : ''} aria-pressed={conditionTag === condition.id} onClick={() => setConditionTag(condition.id)}>
-                  <strong>{condition.title}</strong><span>{condition.detail}</span>
-                </button>
-              ))}
-            </div>
-          </fieldset>
-
-          <label className="stitch-field stitch-price-field">
-            <span>ราคาขาย (บาท) <b>*</b></span>
-            <div><b>฿</b><input type="number" min="1" step="1" value={price} onChange={(event) => setPrice(event.target.value)} placeholder="0" required /></div>
-          </label>
 
           <label className="stitch-field">
             <span>รายละเอียดสินค้าเพิ่มเติม</span>
             <textarea value={description} onChange={(event) => setDescription(event.target.value)} placeholder="บอกสภาพสินค้า ตำหนิ หรือข้อมูลที่ผู้ซื้อควรรู้" rows={4} maxLength={1000} />
           </label>
 
-          <label className="stitch-field stitch-delivery-field">
-            <span>วิธีรับสินค้า <b>*</b></span>
-            <div className="stitch-select-wrap"><Package size={16} /><select value={deliveryType} onChange={(event) => setDeliveryType(event.target.value)}><option value="pickup">นัดรับที่มหาวิทยาลัย</option><option value="shipping">จัดส่งพัสดุ</option></select><ChevronDown size={16} /></div>
+          <label className="stitch-field stitch-price-field">
+            <span>ราคาขาย (บาท) <b>*</b></span>
+            <div><b>฿</b><input type="number" min="1" step="1" value={price} onChange={(event) => setPrice(event.target.value)} placeholder="0" required /></div>
           </label>
+
+          <div className="stitch-quantity-field">
+            <div className="stitch-quantity-wrapper">
+              <QuantityStepper
+                value={quantity}
+                onValueChange={(val) => setQuantity(Math.min(10, Math.max(1, Number(val) || 1)))}
+                min={1}
+                max={10}
+                size="md"
+              />
+            </div>
+          </div>
         </section>
         {submitError && <p className="add-product-error" role="alert">{submitError}</p>}
 

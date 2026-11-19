@@ -48,10 +48,7 @@ export default function ProductCard({ product, onSelectProduct }) {
           </span>
 
           {product.verified && (
-            <div className="spu-verified-tag" title="ยืนยันตัวตนด้วยบัตรนักศึกษา SPU แล้ว">
-              <CheckCircle2 size={10} strokeWidth={3} className="verified-check" />
-              <span>SPU</span>
-            </div>
+            <CheckCircle2 size={14} className="profile-verified-icon" />
           )}
         </div>
       </div>

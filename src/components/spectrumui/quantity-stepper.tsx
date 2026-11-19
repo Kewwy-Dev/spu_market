@@ -17,6 +17,8 @@ export interface QuantityStepperProps {
   defaultValue?: number
   /** Fires with the next clamped value on every change */
   onValueChange?: (value: number) => void
+  /** Fires when a press is blocked at min or max */
+  onBoundaryHit?: (direction: "min" | "max") => void
   /** Lowest allowed value. Default 0 */
   min?: number
   /** Highest allowed value. Default 99 */
@@ -36,7 +38,7 @@ const HOLD_DELAY = 400
 const HOLD_INTERVAL = 80
 const HOLD_FAST_INTERVAL = 40
 const HOLD_FAST_AFTER = 10
-const FLASH_DURATION = 400
+const FLASH_DURATION = 600
 
 /** Snappy spring for the press squish on the +/- buttons */
 const SPRING_SNAPPY = { type: "spring", stiffness: 500, damping: 30 } as const
@@ -91,6 +93,7 @@ export function QuantityStepper({
   value: valueProp,
   defaultValue = 1,
   onValueChange,
+  onBoundaryHit,
   min = 0,
   max = 99,
   step = 1,
@@ -167,6 +170,7 @@ export function QuantityStepper({
         setAnnouncement(
           delta < 0 ? `Minimum quantity is ${min}` : `Maximum quantity is ${max}`,
         )
+        onBoundaryHit?.(delta < 0 ? "min" : "max")
         return false
       }
       valueRef.current = next
@@ -176,7 +180,7 @@ export function QuantityStepper({
       setAnnouncement(`Quantity ${next}`)
       return true
     },
-    [min, max, valueProp, onValueChange],
+    [min, max, valueProp, onValueChange, onBoundaryHit],
   )
 
   const startHold = useCallback(
@@ -284,6 +288,7 @@ export function QuantityStepper({
         "cart-qty-control quantity-stepper inline-flex select-none items-center rounded-full bg-white",
         "shadow-[0px_0px_0px_1px_rgba(0,0,0,0.06),0px_1px_2px_0px_rgba(0,0,0,0.04),0px_2px_4px_0px_rgba(0,0,0,0.04)]",
         "dark:border dark:border-neutral-800 dark:bg-neutral-900 dark:shadow-none",
+        flash > 0 && "quantity-stepper-invalid",
         disabled && "pointer-events-none opacity-50",
         container,
         className,

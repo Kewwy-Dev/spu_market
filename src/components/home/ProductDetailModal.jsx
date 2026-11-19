@@ -59,10 +59,7 @@ export default function ProductDetailModal({ product, onClose, onContactSeller }
               <div className="seller-name-row">
                 <span className="seller-title">{product.seller}</span>
                 {product.verified && (
-                  <span className="spu-verified-tag">
-                    <CheckCircle2 size={10} strokeWidth={3} />
-                    <span>SPU Verified</span>
-                  </span>
+                  <CheckCircle2 size={14} className="profile-verified-icon" />
                 )}
               </div>
               <span className="seller-sub">นักศึกษามหาวิทยาลัยศรีปทุม ยืนยันตัวตนแล้ว</span>
