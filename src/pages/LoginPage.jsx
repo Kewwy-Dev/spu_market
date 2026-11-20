@@ -24,7 +24,7 @@ export default function LoginPage({ onBack, authError = '', onClearAuthError }) 
   const sendOtp = async (targetEmail) => {
     const { error: authError } = await supabase.auth.signInWithOtp({
       email: targetEmail,
-      options: { shouldCreateUser: false },
+      options: { shouldCreateUser: true },
     });
     if (authError) throw authError;
   };
