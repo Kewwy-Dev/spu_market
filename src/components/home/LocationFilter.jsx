@@ -81,29 +81,33 @@ export default function LocationFilter({ activeLocation, onSelectLocation, locat
   };
 
   return (
-    <section className="location-section">
-      <div className="location-header-row">
-        <div className="location-title-group">
-          <MapPin size={16} className="pin-icon" strokeWidth={2.4} />
-          <h3 className="location-heading">จุดนัดรับยอดนิยมในมหาวิทยาลัย</h3>
+    <section className="flex min-w-0 flex-col gap-2 rounded-[14px] border border-purple-100 bg-purple-50/70 px-3 py-2.5 sm:px-4 sm:py-3">
+      <div className="flex items-center justify-between gap-1.5">
+        <div className="flex items-center gap-1.5">
+          <MapPin size={16} className="text-purple-600" strokeWidth={2.4} />
+          <h3 className="text-[0.78rem] sm:text-sm font-bold text-purple-950">จุดนัดรับยอดนิยมในมหาวิทยาลัย</h3>
         </div>
         <ImagePreview
           src={CAMPUS_MAP_IMAGE}
           alt="แผนที่มหาวิทยาลัยศรีปทุม"
           width={480}
           height={340}
-          className="campus-safe-badge campus-map-trigger"
+          className="inline-flex !w-auto cursor-zoom-in items-center justify-center gap-1 rounded-full border border-spu-teal-border bg-spu-teal-light px-2 py-0.5 text-[0.62rem] font-bold text-emerald-700"
           triggerLabel="แผนที่ SPU"
         />
       </div>
 
-      <div className="location-chips-row" ref={scrollRef} onScroll={updateScrollState}>
+      <div className="scrollbar-none flex items-center gap-1.5 overflow-x-auto pb-0.5" ref={scrollRef} onScroll={updateScrollState}>
         <button
           type="button"
-          className={`location-chip ${activeLocation === 'all' ? 'active' : ''}`}
+          className={`inline-flex shrink-0 items-center gap-[5px] whitespace-nowrap rounded-full border px-2.5 py-1 text-[0.7rem] font-semibold transition-all duration-200 ${
+            activeLocation === 'all'
+              ? 'border-spu-pink bg-[#fff5f9] text-spu-pink shadow-[0_1px_4px_rgba(230,0,126,0.15)]'
+              : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+          }`}
           onClick={() => onSelectLocation('all')}
         >
-          {activeLocation === 'all' && <span className="chip-dot" />}
+          {activeLocation === 'all' && <span className="h-1.5 w-1.5 rounded-full bg-spu-pink" />}
           <span>ทั้งหมดทุกตึก</span>
         </button>
 
@@ -114,10 +118,14 @@ export default function LocationFilter({ activeLocation, onSelectLocation, locat
             <button
               key={locKey}
               type="button"
-              className={`location-chip ${isActive ? 'active' : ''}`}
+              className={`inline-flex shrink-0 items-center gap-[5px] whitespace-nowrap rounded-full border px-2.5 py-1 text-[0.7rem] font-semibold transition-all duration-200 ${
+                isActive
+                  ? 'border-spu-pink bg-[#fff5f9] text-spu-pink shadow-[0_1px_4px_rgba(230,0,126,0.15)]'
+                  : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+              }`}
               onClick={() => onSelectLocation(locKey)}
             >
-              {isActive && <span className="chip-dot" />}
+              {isActive && <span className="h-1.5 w-1.5 rounded-full bg-spu-pink" />}
               <span>{loc.name || loc.location_name}</span>
             </button>
           );
@@ -126,7 +134,7 @@ export default function LocationFilter({ activeLocation, onSelectLocation, locat
 
       {/* Scroll indicator dots */}
       {isScrollable && (
-        <div className="slider-dots-container" role="tablist" aria-label="ตัวบอกตำแหน่งการเลื่อนจุดนัดรับ">
+        <div className="-mt-[3px] flex justify-center gap-[5px] pt-px" role="tablist" aria-label="ตัวบอกตำแหน่งการเลื่อนจุดนัดรับ">
           {[0, 1, 2].map((index) => (
             <button
               key={index}
@@ -134,7 +142,9 @@ export default function LocationFilter({ activeLocation, onSelectLocation, locat
               role="tab"
               aria-selected={activeDot === index}
               aria-label={`เลื่อนจุดนัดรับไปตำแหน่งที่ ${index + 1}`}
-              className={`slider-dot ${activeDot === index ? 'active' : ''}`}
+              className={`h-1.5 cursor-pointer rounded-full border-0 p-0 transition-all duration-300 ${
+                activeDot === index ? 'w-[18px] bg-purple-600' : 'w-1.5 bg-purple-600/20'
+              }`}
               onClick={() => scrollToDot(index)}
             />
           ))}

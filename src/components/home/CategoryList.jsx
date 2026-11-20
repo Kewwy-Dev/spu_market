@@ -89,22 +89,22 @@ export default function CategoryList({ activeCategory, onSelectCategory, categor
   };
 
   return (
-    <section className="category-section">
-      <div className="section-title-row">
-        <div className="title-left">
-          <LayoutGrid size={17} className="title-icon-pink" strokeWidth={2.2} />
-          <h2 className="section-heading">หมวดหมู่สินค้า</h2>
+    <section className="flex min-w-0 flex-col gap-2 rounded-[14px] border border-pink-100 bg-[#fff5f9] px-3 py-2.5 sm:px-4 sm:py-3">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5">
+          <LayoutGrid size={17} className="text-spu-pink" strokeWidth={2.2} />
+          <h2 className="text-[0.88rem] sm:text-base font-bold text-slate-900">หมวดหมู่สินค้า</h2>
         </div>
         <button
           type="button"
-          className="see-all-link"
+          className="text-[0.74rem] sm:text-xs font-semibold text-spu-pink hover:underline"
           onClick={() => setCategoryModalOpen(true)}
         >
           ดูทั้งหมด
         </button>
       </div>
 
-      <div className="category-pills-scroll" role="tablist" ref={scrollRef} onScroll={updateScrollState}>
+      <div className="scrollbar-none flex items-center gap-1.5 overflow-x-auto pb-1" role="tablist" ref={scrollRef} onScroll={updateScrollState}>
         {categoryList.map((cat) => {
           const catKey = cat.slug || cat.id;
           const isActive = activeCategory === catKey;
@@ -115,7 +115,11 @@ export default function CategoryList({ activeCategory, onSelectCategory, categor
               type="button"
               role="tab"
               aria-selected={isActive}
-              className={`category-pill-btn ${isActive ? 'active' : ''}`}
+              className={`inline-flex shrink-0 items-center whitespace-nowrap rounded-full border px-3 py-[5px] text-[0.72rem] font-semibold transition-all duration-200 ${
+                isActive
+                  ? 'border-spu-pink bg-spu-pink text-white shadow-[0_2px_8px_rgba(230,0,126,0.25)]'
+                  : 'border-pink-100 bg-white text-slate-600 hover:border-spu-pink-border hover:bg-[#fff0f6]'
+              }`}
               onClick={() => selectCategory(catKey)}
             >
               {displayName}
@@ -126,7 +130,7 @@ export default function CategoryList({ activeCategory, onSelectCategory, categor
 
       {/* Scroll indicator dots */}
       {isScrollable && (
-        <div className="slider-dots-container" role="tablist" aria-label="ตัวบอกตำแหน่งการเลื่อนหมวดหมู่">
+        <div className="-mt-[3px] flex justify-center gap-[5px] pt-px" role="tablist" aria-label="ตัวบอกตำแหน่งการเลื่อนหมวดหมู่">
           {[0, 1, 2].map((index) => (
             <button
               key={index}
@@ -134,7 +138,9 @@ export default function CategoryList({ activeCategory, onSelectCategory, categor
               role="tab"
               aria-selected={activeDot === index}
               aria-label={`เลื่อนหมวดหมู่ไปตำแหน่งที่ ${index + 1}`}
-              className={`slider-dot ${activeDot === index ? 'active' : ''}`}
+              className={`h-1.5 cursor-pointer rounded-full border-0 p-0 transition-all duration-300 ${
+                activeDot === index ? 'w-[18px] bg-spu-pink' : 'w-1.5 bg-[rgba(209,14,120,0.2)]'
+              }`}
               onClick={() => scrollToDot(index)}
             />
           ))}
@@ -142,23 +148,42 @@ export default function CategoryList({ activeCategory, onSelectCategory, categor
       )}
 
       {isCategoryModalOpen && (
-        <div className="category-modal-backdrop" onClick={() => setCategoryModalOpen(false)}>
-          <section className="category-modal" role="dialog" aria-modal="true" aria-labelledby="category-modal-title" onClick={(event) => event.stopPropagation()}>
-            <header className="category-modal-header">
-              <h2 id="category-modal-title">เลือกหมวดหมู่สินค้า</h2>
-              <button type="button" aria-label="ปิด" onClick={() => setCategoryModalOpen(false)}>
+        <div
+          className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-900/52 p-[18px]"
+          onClick={() => setCategoryModalOpen(false)}
+        >
+          <section
+            className="max-h-[80vh] w-full max-w-[420px] overflow-auto rounded-[18px] bg-white p-4 shadow-[0_20px_60px_rgba(15,23,42,0.22)]"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="category-modal-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="mb-3 flex items-center justify-between">
+              <h2 id="category-modal-title" className="text-[0.9rem] font-bold text-[#172033]">เลือกหมวดหมู่สินค้า</h2>
+              <button
+                type="button"
+                aria-label="ปิด"
+                className="grid h-8 w-8 place-items-center rounded-full bg-slate-100 text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-800"
+                onClick={() => setCategoryModalOpen(false)}
+              >
                 <X size={20} />
               </button>
             </header>
-            <div className="category-modal-options">
+            <div className="grid gap-[7px]">
               {categoryList.map((cat) => {
                 const catKey = cat.slug || cat.id;
                 const displayName = cleanCategoryName(cat.name || cat.category_name);
+                const selected = activeCategory === catKey;
                 return (
                   <button
                     type="button"
                     key={catKey}
-                    className={`category-modal-option ${activeCategory === catKey ? 'selected' : ''}`}
+                    className={`rounded-[11px] border px-3 py-2.5 text-left text-[0.75rem] transition-colors ${
+                      selected
+                        ? 'border-spu-pink-border bg-spu-pink-light font-bold text-spu-pink'
+                        : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                    }`}
                     onClick={() => selectCategory(catKey)}
                   >
                     {displayName}

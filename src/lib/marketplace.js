@@ -22,8 +22,8 @@ function mapProduct(row) {
     description: row.description || '',
     image: images[0] || '',
     images,
-    location: DEFAULT_LOCATION_LABELS[row.location_slug] || row.location_name,
-    building: DEFAULT_LOCATION_LABELS[row.location_slug] || row.location_name,
+    location: row.location_name || DEFAULT_LOCATION_LABELS[row.location_slug] || row.location_slug || '',
+    building: row.location_name || DEFAULT_LOCATION_LABELS[row.location_slug] || row.location_slug || '',
     category: row.category_slug,
     categoryName: row.category_name || DEFAULT_CATEGORY_LABELS[row.category_slug] || row.category_slug || '',
     locationSlug: row.location_slug,
@@ -392,10 +392,12 @@ export const DEFAULT_CATEGORY_LABELS = {
 };
 
 export const DEFAULT_LOCATION_LABELS = {
-  b11: 'ตึก 11 (ตึกกิจกรรม)',
-  b9: 'อาคาร 9 (สุขสำราญ)',
-  b1: 'อาคาร 1 (ตึกดำ)',
-  canteen: 'โรงอาหารกลาง SPU',
+  b11: 'อาคาร 11',
+  b9: 'อาคาร 9',
+  b1: 'อาคาร 1',
+  b5: 'อาคาร 5',
+  b10: 'โรงอาหารเย็น',
+  b7: 'โรงอาหารร้อน',
 };
 
 export const FALLBACK_CATEGORIES = [
@@ -430,7 +432,7 @@ export async function listPickupLocations({ forceRefresh = false } = {}) {
       id: location.slug,
       slug: location.slug,
       locationId: location.id,
-      name: DEFAULT_LOCATION_LABELS[location.slug] || location.location_name,
+      name: location.location_name || DEFAULT_LOCATION_LABELS[location.slug] || location.slug || '',
       location_name: location.location_name,
       rawName: location.location_name,
       isPopular: Boolean(location.is_popular),

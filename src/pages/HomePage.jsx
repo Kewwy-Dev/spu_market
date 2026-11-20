@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { LifeBuoy, Phone, MessageCircle, X } from 'lucide-react';
 import AppHeader from '../components/common/AppHeader';
 import NotificationDrawer from '../components/NotificationDrawer';
@@ -67,13 +67,19 @@ export default function HomePage({
     if (locationSectionRef.current) {
       locationSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
     } else {
-      const el = document.getElementById('pickup-locations') || document.querySelector('.location-section');
+      const el = document.getElementById('pickup-locations');
       el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   };
 
+  useEffect(() => {
+    if (!productError && !isLoadingProducts && products.length === 0) {
+      console.info('No listings are available yet. Confirm that `supabase/seed.sql` has been run in the Supabase SQL Editor.');
+    }
+  }, [productError, isLoadingProducts, products.length]);
+
   return (
-    <div className="home-page-root">
+    <div className="flex min-h-full w-full min-w-0 flex-col bg-slate-50">
       {/* 1. App Header — sticky, full width */}
       <AppHeader
         onNotificationClick={handleNotification}
@@ -84,25 +90,29 @@ export default function HomePage({
       />
 
       {(productError || isLoadingProducts) && (
-        <div className={`market-data-notice ${productError ? 'is-error' : ''}`} role={productError ? 'alert' : 'status'}>
-          {productError || 'Loading marketplace listings...'}
-        </div>
-      )}
-      {!productError && !isLoadingProducts && products.length === 0 && (
-        <div className="market-data-notice" role="status">
-          No listings are available yet. Confirm that `supabase/seed.sql` has been run in the Supabase SQL Editor.
+        <div className="mx-auto w-full max-w-7xl px-3.5 pt-2 sm:px-6">
+          <div
+            className={`rounded-[10px] px-3 py-2.5 text-[13px] ${
+              productError ? 'bg-rose-50 text-rose-800' : 'bg-slate-100 text-slate-600'
+            }`}
+            role={productError ? 'alert' : 'status'}
+          >
+            {productError || 'Loading marketplace listings...'}
+          </div>
         </div>
       )}
 
-      {/* 3. Auto-sliding Hero Banner Slider — full width with its own margin */}
-      <HeroBannerSlider
-        onNavigateToRegister={onNavigateToRegister}
-        onNavigateToProducts={onNavigateToProducts}
-        onSelectLocationSection={handleScrollToLocations}
-      />
+      {/* 3. Auto-sliding Hero Banner Slider */}
+      <div className="mx-auto w-full max-w-7xl px-3.5 pt-3 sm:px-6">
+        <HeroBannerSlider
+          onNavigateToRegister={onNavigateToRegister}
+          onNavigateToProducts={onNavigateToProducts}
+          onSelectLocationSection={handleScrollToLocations}
+        />
+      </div>
 
       {/* 4-9: Scrollable content */}
-      <div className="home-page-content">
+      <div className="mx-auto flex w-full max-w-7xl min-w-0 flex-1 flex-col gap-3.5 px-3.5 pt-3 pb-24 sm:px-6">
         {/* 4. Quick Actions */}
         <QuickActions
           isSeller={currentUser?.role?.toLowerCase() === 'seller'}
@@ -127,7 +137,7 @@ export default function HomePage({
         />
 
         {/* 6. Campus Location Filter */}
-        <div ref={locationSectionRef} id="pickup-locations">
+        <div ref={locationSectionRef} id="pickup-locations" className="min-w-0">
           <LocationFilter
             activeLocation={activeLocation}
             onSelectLocation={setActiveLocation}
@@ -163,44 +173,56 @@ export default function HomePage({
 
       {/* Help & Support Modal */}
       {showHelpModal && (
-        <div className="appointment-modal-backdrop" onClick={() => setShowHelpModal(false)} role="presentation">
+        <div
+          className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-900/55 p-0 backdrop-blur-xs sm:items-center sm:p-4"
+          onClick={() => setShowHelpModal(false)}
+          role="presentation"
+        >
           <div
-            className="profile-submodal-card"
+            className="flex w-full max-w-md flex-col gap-4 rounded-t-3xl bg-white p-5 shadow-2xl sm:rounded-3xl"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
             aria-labelledby="home-help-title"
           >
-            <div className="submodal-header">
-              <div className="submodal-icon teal"><LifeBuoy size={20} /></div>
-              <h3 id="home-help-title">ศูนย์ช่วยเหลือ &amp; แจ้งปัญหา</h3>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-spu-teal-light text-spu-teal">
+                <LifeBuoy size={20} />
+              </div>
+              <h3 id="home-help-title" className="flex-1 text-base font-bold text-slate-900">
+                ศูนย์ช่วยเหลือ &amp; แจ้งปัญหา
+              </h3>
               <button
                 type="button"
-                className="submodal-close"
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-900"
                 onClick={() => setShowHelpModal(false)}
                 aria-label="ปิดศูนย์ช่วยเหลือ"
               >
                 <X size={18} />
               </button>
             </div>
-            <div className="submodal-body">
+            <div className="flex flex-col gap-3 text-[0.78rem] leading-relaxed text-slate-600">
               <p>หากพบปัญหาในการซื้อขาย ไม่มาตามนัด สินค้าไม่ตรงปก หรือต้องการความช่วยเหลือ ติดต่อผู้ดูแลระบบได้ที่:</p>
-              <div className="help-contact-card">
-                <Phone size={16} />
-                <div>
-                  <strong>โทรด่วนฝ่ายประสานงาน SPU Market</strong>
-                  <span>02-579-1111 ต่อ 1234 (เวลาทำการ 08:30 - 16:30 น.)</span>
+              <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-slate-700">
+                <Phone size={16} className="mt-0.5 shrink-0 text-spu-pink" />
+                <div className="flex flex-col gap-0.5">
+                  <strong className="text-[0.8rem] font-bold text-slate-900">โทรด่วนฝ่ายประสานงาน SPU Market</strong>
+                  <span className="text-[0.74rem] text-slate-500">02-579-1111 ต่อ 1234 (เวลาทำการ 08:30 - 16:30 น.)</span>
                 </div>
               </div>
-              <div className="help-contact-card">
-                <MessageCircle size={16} />
-                <div>
-                  <strong>LINE Official SPU Market</strong>
-                  <span>@spumarket (ดูแลความปลอดภัยและให้คำปรึกษาตลอด 24 ชม.)</span>
+              <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-slate-700">
+                <MessageCircle size={16} className="mt-0.5 shrink-0 text-spu-teal" />
+                <div className="flex flex-col gap-0.5">
+                  <strong className="text-[0.8rem] font-bold text-slate-900">LINE Official SPU Market</strong>
+                  <span className="text-[0.74rem] text-slate-500">@spumarket (ดูแลความปลอดภัยและให้คำปรึกษาตลอด 24 ชม.)</span>
                 </div>
               </div>
             </div>
-            <button type="button" className="submodal-done-btn" onClick={() => setShowHelpModal(false)}>
+            <button
+              type="button"
+              className="h-11 w-full rounded-xl bg-spu-pink text-sm font-bold text-white transition-colors hover:bg-spu-pink-hover"
+              onClick={() => setShowHelpModal(false)}
+            >
               ปิดหน้าต่าง
             </button>
           </div>

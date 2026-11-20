@@ -152,7 +152,7 @@ export default function CartPage({ currentUser, products = [], onCartChange, onN
     const appointment = data?.[0];
     if (!appointment?.conversation_id) { setError('บันทึกการนัดรับไม่สำเร็จ กรุณาลองอีกครั้ง'); setBusy(false); return; }
     const localizedSchedule = new Intl.DateTimeFormat('th-TH', { timeZone: 'Asia/Bangkok', dateStyle: 'long', timeStyle: 'short', hourCycle: 'h23' }).format(scheduledAt);
-    const draftMessage = `สวัสดีครับ/ค่ะ ขอนัดรับสินค้า “${selected.title}” จำนวน ${appointmentQty} ชิ้น ราคา ฿${(selected.price * appointmentQty).toLocaleString()} วันที่ ${localizedSchedule} ที่ ${selected.location} สะดวกไหมครับ/คะ?`;
+    const draftMessage = `ขอนัดรับสินค้า “${selected.title}” จำนวน ${appointmentQty} ชิ้น ราคา ฿${(selected.price * appointmentQty).toLocaleString()} วันที่ ${localizedSchedule} ที่ ${selected.location} สะดวกไหม?`;
     const removed = await removeItem(selected);
     if (!removed) { setBusy(false); return; }
     setShowSchedule(false);
@@ -162,67 +162,287 @@ export default function CartPage({ currentUser, products = [], onCartChange, onN
 
   const scheduleLimits = getBangkokScheduleLimits();
 
-  return <div className="cart-page-root">
-    <header className="cart-header">
-      <div className="cart-header-left">
-        <button type="button" className="chat-list-back-btn" onClick={onBack || onNavigateHome} aria-label="ย้อนกลับ" title="ย้อนกลับ"><ArrowLeft size={20} /></button>
-        <h1>ตะกร้าสินค้า</h1>
-      </div>
-      <span className="cart-header-count">{cartItems.length} รายการ</span>
-    </header>
-    {error && !showSchedule && <div role="alert" className="cart-error" style={{ padding: '12px 16px', color: '#b42318' }}>{error}</div>}
-    <div className="cart-items-section">
-      <SkeletonReveal loading={loading} skeleton={<div className="cart-skeleton-list" aria-hidden="true">{[0, 1, 2].map((item) => <div className="cart-item-card" key={item}><SkeletonBlock className="cart-skeleton-image" /><div className="cart-skeleton-copy"><SkeletonBlock /><SkeletonBlock /><SkeletonBlock /></div></div>)}</div>}>
-      {!currentUser ? <div className="cart-empty-state"><div className="cart-empty-icon"><ShoppingCart size={52} strokeWidth={1.2} /></div><h3>กรุณาเข้าสู่ระบบ</h3><p>เข้าสู่ระบบเพื่อดูสินค้าในตะกร้าของคุณ</p></div> : cartItems.length === 0 ? <div className="cart-empty-state"><div className="cart-empty-icon"><ShoppingCart size={52} strokeWidth={1.2} /></div><h3>ตะกร้าของคุณว่างเปล่า</h3><button type="button" className="cart-browse-btn" onClick={onNavigateProducts || onNavigateHome}><Sparkles size={16} /><span>เลือกดูสินค้า</span></button></div> : cartItems.map((item) => <div key={item.id} className={`cart-item-card ${selectedId === item.id ? 'selected' : ''} ${item.isSold ? 'out-of-stock' : ''}`}>
-        <div className="cart-item-top-row">
-          <div className="cart-item-seller-row">{item.sellerAvatar && !failedAvatars[item.id] ? <img src={item.sellerAvatar} alt={item.seller} className="cart-seller-avatar" onError={() => setFailedAvatars((prev) => ({ ...prev, [item.id]: true }))} /> : <span className="cart-seller-avatar cart-seller-avatar-fallback">{item.seller.slice(0, 1)}</span>}<button type="button" className="cart-seller-name" onClick={() => item.sellerId && onSelectSeller?.(item.sellerId)}><span>{item.seller}</span>{item.sellerVerified && <CheckCircle2 size={14} className="profile-verified-icon" />}<ChevronRight size={13} strokeWidth={2.2} className="cart-seller-chevron" /></button></div>
-          <div className="cart-item-actions"><button type="button" className="cart-chat-btn" onClick={() => void onOpenProductChat?.({ id: item.productId, sellerId: item.sellerId, seller: item.seller, title: item.title, image: item.image, price: item.price, location: item.location })} aria-label="แชทกับผู้ขาย"><MessageCircle size={16} /></button><button type="button" className="cart-remove-btn" onClick={() => void removeItem(item)} aria-label="ลบออกจากตะกร้า"><Trash2 size={15} /></button></div>
+  const isEmptyState = !currentUser || cartItems.length === 0;
+
+  return (
+    <div className={`flex min-h-dvh w-full flex-col bg-slate-50 ${isEmptyState ? 'pb-16' : 'pb-36'}`}>
+      <header className="sticky top-0 z-30 w-full border-b border-slate-100 bg-white/95 backdrop-blur-sm">
+        <div className="mx-auto flex min-h-14 w-full max-w-7xl items-center justify-between gap-2.5 px-4 sm:px-6">
+          <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-700 transition-colors hover:bg-slate-100 hover:text-spu-pink"
+              onClick={onBack || onNavigateHome}
+              aria-label="ย้อนกลับ"
+              title="ย้อนกลับ"
+            >
+              <ArrowLeft size={20} />
+            </button>
+            <h1 className="text-base sm:text-lg font-bold tracking-[-0.3px] text-slate-900">ตะกร้าสินค้า</h1>
+          </div>
+          <span className="rounded-full bg-slate-100 px-2.5 py-[3px] text-xs font-semibold text-slate-500 tabular-nums">
+            {cartItems.length} รายการ
+          </span>
         </div>
-        <div className="cart-item-body" onClick={() => {
-          const targetProduct = products.find((p) => String(p.id) === String(item.productId)) || {
-            id: item.productId,
-            title: item.title,
-            price: item.price,
-            image: item.image,
-            location: item.location,
-            seller: item.seller,
-            sellerId: item.sellerId,
-            sellerAvatar: item.sellerAvatar,
-            verified: item.sellerVerified,
-            stock: item.stock,
-            tag: item.tag,
-          };
-          onSelectProduct?.(targetProduct);
-        }}>
-          <button type="button" className="cart-item-checkbox-btn" onClick={(e) => { e.stopPropagation(); handleToggleSelect(item); }} disabled={item.isSold} aria-label={item.isSold ? `${item.title} (สินค้าหมด)` : `เลือก ${item.title}`} aria-pressed={selectedId === item.id}><span className={`cart-checkbox ${selectedId === item.id ? 'checked' : ''} ${item.isSold ? 'disabled' : ''}`}>{selectedId === item.id && <CheckCircle2 size={14} strokeWidth={2.5} />}</span></button>
-          <div className="cart-item-thumb-wrap">{item.image ? <img src={item.image} alt={item.title} className="cart-item-thumb" /> : <Package size={40} />}{item.tag && <span className="cart-item-tag"><Tag size={9} />{item.tag}</span>}</div>
-          <div className="cart-item-info">
-            <h4 className="cart-item-title">{item.title}</h4>
-            <div className="cart-item-pickup-row"><MapPin size={11} className="cart-pickup-icon" /><span className="cart-pickup-text">{item.location}</span></div>
-            <div className="cart-item-price-row">
-              <div className="cart-item-price-col">
-                <span className="cart-item-price">฿{(item.price * item.qty).toLocaleString()}</span>
-              </div>
-              <div className="cart-qty-stop" onClick={(e) => e.stopPropagation()}>
-                <QuantityStepper value={item.qty} onValueChange={(qty) => updateQty(item.id, qty)} min={item.isSold ? 0 : 1} max={Math.max(1, Number(item.stock || 1))} disabled={item.isSold} size="sm" />
-              </div>
+      </header>
+
+      {error && !showSchedule && (
+        <div role="alert" className="mx-auto w-full max-w-4xl px-4 pt-3 text-sm font-medium text-rose-700 sm:px-6">
+          {error}
+        </div>
+      )}
+
+      <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-2.5 px-3 py-2.5 sm:px-6 [&>.spectrum-skeleton-reveal]:flex [&>.spectrum-skeleton-reveal]:flex-1 [&>.spectrum-skeleton-reveal]:flex-col [&_.spectrum-skeleton-content]:flex [&_.spectrum-skeleton-content]:flex-1 [&_.spectrum-skeleton-content]:flex-col [&_.spectrum-skeleton-content]:gap-2.5">
+        <SkeletonReveal
+          loading={loading}
+          skeleton={
+            <div className="cart-skeleton-list" aria-hidden="true">
+              {[0, 1, 2].map((item) => (
+                <div className="cart-item-card flex items-start gap-2.5 rounded-[14px] bg-white p-3 shadow-xs" key={item}>
+                  <SkeletonBlock className="cart-skeleton-image" />
+                  <div className="cart-skeleton-copy">
+                    <SkeletonBlock />
+                    <SkeletonBlock />
+                    <SkeletonBlock />
+                  </div>
+                </div>
+              ))}
             </div>
+          }
+        >
+          {!currentUser ? (
+            <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
+              <div className="mb-2 flex h-24 w-24 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+                <ShoppingCart size={52} strokeWidth={1.2} />
+              </div>
+              <h3 className="text-base font-bold text-slate-800">กรุณาเข้าสู่ระบบ</h3>
+              <p className="text-[0.82rem] leading-relaxed text-slate-500">เข้าสู่ระบบเพื่อดูสินค้าในตะกร้าของคุณ</p>
+            </div>
+          ) : cartItems.length === 0 ? (
+            <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
+              <div className="mb-2 flex h-24 w-24 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+                <ShoppingCart size={52} strokeWidth={1.2} />
+              </div>
+              <h3 className="text-base font-bold text-slate-800">ตะกร้าของคุณว่างเปล่า</h3>
+              <button
+                type="button"
+                className="mt-2 flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-[#a20857] to-[#ec008c] px-5 py-2.5 text-[0.85rem] font-bold text-white transition-opacity hover:opacity-90"
+                onClick={onNavigateProducts || onNavigateHome}
+              >
+                <Sparkles size={16} />
+                <span>เลือกดูสินค้า</span>
+              </button>
+            </div>
+          ) : (
+            cartItems.map((item) => {
+              const isSelected = selectedId === item.id;
+              return (
+                <div
+                  key={item.id}
+                  className={`flex flex-col gap-2 rounded-[14px] border-[1.5px] bg-white px-2.5 py-3 sm:px-4 shadow-[0_1px_4px_rgba(0,0,0,0.05)] transition-all duration-200 ${
+                    isSelected ? 'border-[#a20857]/25 shadow-[0_2px_10px_rgba(162,8,87,0.08)]' : 'border-transparent'
+                  } ${item.isSold ? 'opacity-72' : ''}`}
+                >
+                  <div className="flex w-full items-center justify-between gap-2">
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      {item.sellerAvatar && !failedAvatars[item.id] ? (
+                        <img
+                          src={item.sellerAvatar}
+                          alt={item.seller}
+                          className="h-[18px] w-[18px] shrink-0 rounded-full border-[1.5px] border-slate-200 object-cover"
+                          onError={() => setFailedAvatars((prev) => ({ ...prev, [item.id]: true }))}
+                        />
+                      ) : (
+                        <span className="inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] border-slate-200 bg-pink-50 text-[0.6rem] font-bold text-[#a20857]">
+                          {item.seller.slice(0, 1)}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        className="group inline-flex min-w-0 items-center gap-0.5 text-left text-[0.72rem] font-medium text-slate-500 transition-colors hover:text-[#a20857] hover:underline"
+                        onClick={() => item.sellerId && onSelectSeller?.(item.sellerId)}
+                      >
+                        <span className="truncate">{item.seller}</span>
+                        {item.sellerVerified && <CheckCircle2 size={14} className="shrink-0 text-spu-teal" />}
+                        <ChevronRight size={13} strokeWidth={2.2} className="shrink-0 text-slate-400 transition-transform group-hover:translate-x-px group-hover:text-[#a20857]" />
+                      </button>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <button
+                        type="button"
+                        className="flex h-[30px] w-[30px] items-center justify-center rounded-lg border-[1.5px] border-slate-200 bg-slate-50 text-slate-600 transition-all hover:border-blue-300 hover:bg-blue-50 hover:text-blue-500"
+                        onClick={() =>
+                          void onOpenProductChat?.({
+                            id: item.productId,
+                            sellerId: item.sellerId,
+                            seller: item.seller,
+                            title: item.title,
+                            image: item.image,
+                            price: item.price,
+                            location: item.location,
+                          })
+                        }
+                        aria-label="แชทกับผู้ขาย"
+                      >
+                        <MessageCircle size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        className="flex h-[30px] w-[30px] items-center justify-center rounded-lg border-[1.5px] border-red-100 bg-red-50 text-red-500 transition-all hover:border-red-300 hover:bg-red-100"
+                        onClick={() => void removeItem(item)}
+                        aria-label="ลบออกจากตะกร้า"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  </div>
+                  <div
+                    className="flex w-full cursor-pointer items-start gap-2.5"
+                    onClick={() => {
+                      const targetProduct =
+                        products.find((p) => String(p.id) === String(item.productId)) || {
+                          id: item.productId,
+                          title: item.title,
+                          price: item.price,
+                          image: item.image,
+                          location: item.location,
+                          seller: item.seller,
+                          sellerId: item.sellerId,
+                          sellerAvatar: item.sellerAvatar,
+                          verified: item.sellerVerified,
+                          stock: item.stock,
+                          tag: item.tag,
+                        };
+                      onSelectProduct?.(targetProduct);
+                    }}
+                  >
+                    <button
+                      type="button"
+                      className="flex shrink-0 items-center justify-center self-center"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleSelect(item);
+                      }}
+                      disabled={item.isSold}
+                      aria-label={item.isSold ? `${item.title} (สินค้าหมด)` : `เลือก ${item.title}`}
+                      aria-pressed={isSelected}
+                    >
+                      <span
+                        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md transition-all duration-200 ${
+                          isSelected
+                            ? 'bg-gradient-to-br from-[#a20857] to-[#ec008c] text-white'
+                            : item.isSold
+                              ? 'cursor-not-allowed border-2 border-slate-300 bg-slate-100 opacity-40'
+                              : 'border-2 border-slate-300 bg-white'
+                        }`}
+                      >
+                        {isSelected && <CheckCircle2 size={14} strokeWidth={2.5} />}
+                      </span>
+                    </button>
+                    <div className="relative shrink-0">
+                      {item.image ? (
+                        <img
+                          src={item.image}
+                          alt={item.title}
+                          className="block h-[76px] w-[76px] sm:h-20 sm:w-20 rounded-[10px] object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-[76px] w-[76px] sm:h-20 sm:w-20 items-center justify-center rounded-[10px] bg-slate-100 text-slate-400">
+                          <Package size={36} />
+                        </div>
+                      )}
+                      {item.tag && (
+                        <span className="absolute -top-[5px] -left-1 flex items-center gap-0.5 whitespace-nowrap rounded-[5px] bg-gradient-to-br from-amber-500 to-orange-500 px-[5px] py-0.5 text-[0.55rem] font-bold text-white">
+                          <Tag size={9} />
+                          {item.tag}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex min-w-0 flex-1 flex-col gap-1">
+                      <h4 className="line-clamp-2 text-[0.82rem] sm:text-sm font-semibold leading-[1.3] text-slate-800">
+                        {item.title}
+                      </h4>
+                      <div className="flex items-center gap-1 text-[0.7rem] text-slate-500">
+                        <MapPin size={11} className="shrink-0 text-[#a20857]" />
+                        <span className="truncate">{item.location}</span>
+                      </div>
+                      <div className="mt-1 flex w-full items-center justify-between gap-2">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-[0.9rem] sm:text-base font-extrabold text-[#a20857] tabular-nums">
+                            ฿{(item.price * item.qty).toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="ml-auto shrink-0" onClick={(e) => e.stopPropagation()}>
+                          <QuantityStepper
+                            value={item.qty}
+                            onValueChange={(qty) => updateQty(item.id, qty)}
+                            min={item.isSold ? 0 : 1}
+                            max={Math.max(1, Number(item.stock || 1))}
+                            disabled={item.isSold}
+                            size="sm"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </SkeletonReveal>
+      </div>
+
+      {cartItems.length > 0 && (
+        <div className="fixed inset-x-0 bottom-16 z-[29] border-t border-slate-100 bg-white/95 backdrop-blur-md shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
+          <div className="mx-auto flex w-full max-w-4xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[0.72rem] text-slate-500">
+                {selected ? `1 รายการ (${selected.qty} ชิ้น)` : 'ยังไม่เลือกสินค้า'}
+              </span>
+              <span className="text-[1.1rem] font-black tracking-[-0.5px] text-[#a20857] tabular-nums">
+                ฿{total.toLocaleString()}
+              </span>
+            </div>
+            <button
+              type="button"
+              className="flex items-center gap-1.5 whitespace-nowrap rounded-[14px] bg-gradient-to-br from-[#a20857] via-[#d80072] to-[#ec008c] px-[22px] py-3 text-[0.9rem] font-extrabold text-white shadow-[0_6px_20px_rgba(162,8,87,0.35)] transition-all duration-200 hover:-translate-y-px hover:opacity-92 disabled:translate-y-0 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:from-slate-200 disabled:via-slate-200 disabled:to-slate-200 disabled:text-slate-400 disabled:shadow-none"
+              onClick={handlePickup}
+              disabled={!selected || selected.isSold || busy}
+            >
+              <span>{busy ? 'กำลังสร้างห้องแชท...' : 'นัดรับสินค้า'}</span>
+              <ArrowRight size={16} strokeWidth={2.5} />
+            </button>
           </div>
         </div>
-      </div>)}
-      </SkeletonReveal>
-    </div>
-    {cartItems.length > 0 && <div className="cart-checkout-bar"><div className="cart-checkout-info"><span className="cart-checkout-item-count">{selected ? `1 รายการ (${selected.qty} ชิ้น)` : 'ยังไม่เลือกสินค้า'}</span><span className="cart-checkout-total">฿{total.toLocaleString()}</span></div><button type="button" className={`cart-checkout-btn ${!selected || selected.isSold || busy ? 'disabled' : ''}`} onClick={handlePickup} disabled={!selected || selected.isSold || busy}><span>{busy ? 'กำลังสร้างห้องแชท...' : 'นัดรับสินค้า'}</span><ArrowRight size={16} strokeWidth={2.5} /></button></div>}
-    {showSchedule && selected && <div className="pickup-schedule-backdrop" role="presentation" onClick={() => !busy && setShowSchedule(false)}>
-      <form className="pickup-schedule-dialog" role="dialog" aria-modal="true" aria-labelledby="pickup-schedule-title" onSubmit={submitPickup} onClick={(event) => event.stopPropagation()}>
-        <h2 id="pickup-schedule-title">เลือกวันที่และเวลานัดรับ</h2>
-        <DateTimePicker value={scheduledDateTime} onChange={setScheduledDateTime} minDate={scheduleLimits.minDate} minTime={scheduleLimits.minTime} maxTime="18:00" disabled={busy} />
-        {error && <div className="pickup-schedule-error" role="alert">{error}</div>}
-        <div className="pickup-schedule-actions">
-          <button type="button" onClick={() => setShowSchedule(false)} disabled={busy}>ยกเลิก</button>
-          <button type="submit" disabled={busy}>{busy ? 'กำลังบันทึก...' : 'ยืนยันนัดรับ'}</button>
+      )}
+
+      {showSchedule && selected && (
+        <div className="pickup-schedule-backdrop" role="presentation" onClick={() => !busy && setShowSchedule(false)}>
+          <form
+            className="pickup-schedule-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="pickup-schedule-title"
+            onSubmit={submitPickup}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2 id="pickup-schedule-title">เลือกวันที่และเวลานัดรับ</h2>
+            <DateTimePicker
+              value={scheduledDateTime}
+              onChange={setScheduledDateTime}
+              minDate={scheduleLimits.minDate}
+              minTime={scheduleLimits.minTime}
+              maxTime="18:00"
+              disabled={busy}
+            />
+            {error && <div className="pickup-schedule-error" role="alert">{error}</div>}
+            <div className="pickup-schedule-actions">
+              <button type="button" onClick={() => setShowSchedule(false)} disabled={busy}>ยกเลิก</button>
+              <button type="submit" disabled={busy}>{busy ? 'กำลังบันทึก...' : 'ยืนยันนัดรับ'}</button>
+            </div>
+          </form>
         </div>
-      </form>
-    </div>}
-  </div>;
+      )}
+    </div>
+  );
 }

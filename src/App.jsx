@@ -21,10 +21,42 @@ import {
   markNotificationRead,
 } from './lib/notifications';
 import { getSupabaseConfigError, supabase } from './lib/supabase';
-import './App.css';
+import { isAllowedSpuEmail } from './utils/validation';
 
 const PENDING_AUTH_ACTION_KEY = 'spu-market-pending-auth-action';
 const PENDING_AUTH_ACTION_TTL_MS = 30 * 60 * 1000;
+const LAST_ACTIVE_AT_KEY = 'spu-market-last-active-at';
+const SESSION_INACTIVITY_LIMIT_MS = 7 * 24 * 60 * 60 * 1000;
+
+function readLastActiveAt() {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(LAST_ACTIVE_AT_KEY);
+    if (!raw) return null;
+    const timestamp = Number(raw);
+    return Number.isFinite(timestamp) ? timestamp : null;
+  } catch {
+    return null;
+  }
+}
+
+function touchLastActiveAt() {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(LAST_ACTIVE_AT_KEY, String(Date.now()));
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+function clearLastActiveAt() {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.removeItem(LAST_ACTIVE_AT_KEY);
+  } catch {
+    // Ignore storage errors
+  }
+}
 
 function isValidPendingAuthAction(action) {
   return Boolean(action && typeof action === 'object' && typeof action.type === 'string');
@@ -108,6 +140,7 @@ export default function App() {
   const [selectedProfileId, setSelectedProfileId] = useState(() => getRoute().profileId);
   const [selectedSellerId, setSelectedSellerId] = useState(() => getRoute().sellerId || null);
   const [loginPendingTab, setLoginPendingTab] = useState(null);
+  const [loginError, setLoginError] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
   const pendingSellerRegistrations = useRef(new Map());
   const [products, setProducts] = useState([]);
@@ -532,9 +565,43 @@ export default function App() {
     const syncUser = async (authUser, authEvent = null) => {
       const syncId = ++userSyncId;
       if (!authUser) {
+        clearLastActiveAt();
         if (isMounted) setCurrentUser(null);
         return;
       }
+      if (authEvent === 'SIGNED_IN') {
+        touchLastActiveAt();
+      } else {
+        const lastActiveAt = readLastActiveAt();
+        if (lastActiveAt && Date.now() - lastActiveAt > SESSION_INACTIVITY_LIMIT_MS) {
+          clearLastActiveAt();
+          savePendingAuthAction(null);
+          if (isMounted) setCurrentUser(null);
+          try {
+            await supabase.auth.signOut();
+          } catch (signOutError) {
+            console.error('Could not sign out inactive session:', signOutError.message);
+          }
+          return;
+        }
+        touchLastActiveAt();
+      }
+      if (!isAllowedSpuEmail(authUser.email)) {
+        savePendingAuthAction(null);
+        if (isMounted) {
+          setCurrentUser(null);
+          setLoginError('กรุณาเข้าสู่ระบบด้วยอีเมล @spumail.net หรือ @spu.ac.th เท่านั้น');
+          if (window.location.pathname !== '/login') window.history.pushState({}, '', '/login');
+          setActiveTab('login');
+        }
+        try {
+          await supabase.auth.signOut();
+        } catch (signOutError) {
+          console.error('Could not sign out unauthorized email domain:', signOutError.message);
+        }
+        return;
+      }
+      if (isMounted) setLoginError('');
       const basicUser = mapAuthUser(authUser);
       if (isMounted) setCurrentUser(basicUser);
       try {
@@ -644,6 +711,29 @@ export default function App() {
       void supabase.removeChannel(productsChannel);
     };
   }, []);
+
+  useEffect(() => {
+    if (!currentUser?.id) return undefined;
+    let lastTouchedAt = Date.now();
+    touchLastActiveAt();
+
+    const handleActivity = () => {
+      const now = Date.now();
+      if (now - lastTouchedAt >= 60_000) {
+        lastTouchedAt = now;
+        touchLastActiveAt();
+      }
+    };
+
+    window.addEventListener('pointerdown', handleActivity, { passive: true });
+    window.addEventListener('keydown', handleActivity, { passive: true });
+    window.addEventListener('focus', handleActivity);
+    return () => {
+      window.removeEventListener('pointerdown', handleActivity);
+      window.removeEventListener('keydown', handleActivity);
+      window.removeEventListener('focus', handleActivity);
+    };
+  }, [currentUser?.id]);
 
   useEffect(() => {
     if (activeTab !== 'home') return undefined;
@@ -774,6 +864,7 @@ export default function App() {
       window.alert(error.message);
       return;
     }
+    clearLastActiveAt();
     savePendingAuthAction(null);
     setCurrentUser(null);
     setActiveTab('home');
@@ -971,8 +1062,8 @@ export default function App() {
   };
 
   return (
-    <div className="app-viewport">
-      <main className="market-app-shell" role="main">
+    <div className="min-h-dvh w-full bg-slate-100 overflow-x-clip">
+      <main className="market-app-shell mx-auto flex min-h-dvh w-full flex-col bg-white relative overflow-x-clip" role="main">
         {activeTab === 'home' && (
           <HomePage
             onNavigateToRegister={() => {
@@ -1019,7 +1110,10 @@ export default function App() {
 
         {activeTab === 'login' && (
           <LoginPage
+            authError={loginError}
+            onClearAuthError={() => setLoginError('')}
             onBack={() => {
+              setLoginError('');
               savePendingAuthAction(null);
               navigateHome();
             }}
@@ -1207,7 +1301,7 @@ export default function App() {
           />
         )}
 
-        {activeTab !== 'product_detail' && activeTab !== 'products' && activeTab !== 'chat_room' && activeTab !== 'add_product' && (
+        {activeTab !== 'product_detail' && activeTab !== 'products' && activeTab !== 'chat_room' && activeTab !== 'add_product' && activeTab !== 'seller' && (
           <BottomNav
             activeTab={
               activeTab === 'seller'

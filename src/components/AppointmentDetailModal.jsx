@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   MapPin,
   MessageCircle,
-  PackageCheck,
   ShoppingBag,
   Star,
   Store,
@@ -58,7 +57,7 @@ export default function AppointmentDetailModal({
   onMarkProductSold,
   onReviewSubmitted,
 }) {
-  const [confirmingAction, setConfirmingAction] = useState(null); // 'buyer_received' | 'seller_delivered' | 'cancel'
+  const [confirmingAction, setConfirmingAction] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionError, setActionError] = useState('');
   const [existingReview, setExistingReview] = useState(null);
@@ -100,9 +99,7 @@ export default function AppointmentDetailModal({
       .then((review) => {
         if (active) setExistingReview(review);
       })
-      .catch(() => {
-        // Ignore non-critical review lookup errors
-      });
+      .catch(() => {});
 
     return () => {
       active = false;
@@ -111,31 +108,25 @@ export default function AppointmentDetailModal({
 
   if (!appointment) return null;
 
-  // Time calculations
   const scheduledTime = appointment.scheduledAt ? new Date(appointment.scheduledAt).getTime() : 0;
   const now = Date.now();
   const minutesUntilScheduled = scheduledTime ? (scheduledTime - now) / (60 * 1000) : 0;
   const minutesPastScheduled = scheduledTime ? (now - scheduledTime) / (60 * 1000) : 0;
 
-  // Rule 3: Seller delivered and > 1 hour past scheduled_at -> auto-completed
   const isAutoCompleted = appointment.status === 'delivered' && minutesPastScheduled >= 60;
-
-  // Rule 5: Pending and past scheduled_at -> auto-cancelled
   const isAutoCancelled = appointment.status === 'pending' && minutesPastScheduled > 0;
 
-  // Effective status
   const effectiveStatus = isAutoCompleted
     ? 'completed'
     : isAutoCancelled
-    ? 'cancelled'
-    : appointment.status;
+      ? 'cancelled'
+      : appointment.status;
 
   const isPending = effectiveStatus === 'pending';
   const isDelivered = effectiveStatus === 'delivered';
   const isCompleted = effectiveStatus === 'completed';
   const isCancelled = effectiveStatus === 'cancelled';
 
-  // Rule 4: Cannot cancel within 30 minutes of scheduled pickup
   const cannotCancelDueToTime = minutesUntilScheduled > 0 && minutesUntilScheduled <= 30;
 
   const partnerName = isBuyer
@@ -251,35 +242,47 @@ export default function AppointmentDetailModal({
   };
 
   return (
-    <div className="appointment-modal-backdrop" onClick={onClose} role="presentation">
+    <div
+      className="fixed inset-0 z-[210] flex items-end justify-center bg-slate-900/58 backdrop-blur-xs animate-[appointmentFadeIn_0.2s_cubic-bezier(0.16,1,0.3,1)] sm:items-center sm:p-5"
+      onClick={onClose}
+      role="presentation"
+    >
       <div
-        className="appointment-modal-sheet"
+        className="flex max-h-[min(90vh,720px)] w-full max-w-[480px] sm:max-w-[520px] flex-col overflow-hidden rounded-t-3xl bg-white pb-[max(16px,env(safe-area-inset-bottom))] shadow-[0_-12px_40px_rgba(15,23,42,0.25)] animate-[appointmentSlideUp_0.28s_cubic-bezier(0.16,1,0.3,1)] sm:rounded-3xl sm:pb-5 sm:animate-[appointmentPopIn_0.22s_cubic-bezier(0.16,1,0.3,1)]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="appointment-sheet-title"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Mobile drag handle */}
-        <div className="appointment-sheet-handle" aria-hidden="true" />
+        <div className="mx-auto mt-2.5 mb-1 h-1 w-10 rounded-full bg-slate-300 sm:hidden" aria-hidden="true" />
 
-        {/* Modal Header with Clear Role Badge */}
-        <header className="appointment-sheet-header">
-          <div className="appointment-sheet-title-group">
-            <div className={`appointment-header-icon-wrap ${isBuyer ? 'buyer-icon' : 'seller-icon'}`}>
+        <header className="flex items-center justify-between border-b border-slate-100 px-5 pt-3 pb-3.5">
+          <div className="flex items-center gap-3">
+            <div
+              className={`grid h-[42px] w-[42px] shrink-0 place-items-center rounded-xl border-[1.5px] ${
+                isBuyer
+                  ? 'border-blue-200 bg-blue-50 text-blue-600'
+                  : 'border-spu-pink-border bg-pink-50 text-pink-600'
+              }`}
+            >
               {isBuyer ? <ShoppingBag size={20} /> : <Store size={20} />}
             </div>
             <div>
-              <h2 id="appointment-sheet-title">รายละเอียดการนัดรับสินค้า</h2>
-              <div className="appointment-role-badge-row">
-                <span className={`appointment-role-pill ${isBuyer ? 'role-buyer' : 'role-seller'}`}>
+              <h2 id="appointment-sheet-title" className="m-0 text-[0.98rem] font-extrabold leading-[1.3] text-slate-900">
+                รายละเอียดการนัดรับสินค้า
+              </h2>
+              <div className="mt-1 flex items-center gap-1.5">
+                <span
+                  className={`inline-flex items-center gap-[5px] rounded-full border-[1.5px] px-2.5 py-[3px] text-[0.72rem] font-extrabold tracking-[0.01em] ${
+                    isBuyer
+                      ? 'border-blue-300 bg-blue-50 text-blue-700 shadow-[0_1px_4px_rgba(37,99,235,0.12)]'
+                      : 'border-pink-400 bg-pink-50 text-pink-700 shadow-[0_1px_4px_rgba(219,39,119,0.12)]'
+                  }`}
+                >
                   {isBuyer ? (
-                    <>
-                      <ShoppingBag size={12} /> <span>คุณเป็นผู้ซื้อ</span>
-                    </>
+                    <><ShoppingBag size={12} /> <span>คุณเป็นผู้ซื้อ</span></>
                   ) : (
-                    <>
-                      <Store size={12} /> <span>คุณเป็นผู้ขาย</span>
-                    </>
+                    <><Store size={12} /> <span>คุณเป็นผู้ขาย</span></>
                   )}
                 </span>
               </div>
@@ -287,7 +290,7 @@ export default function AppointmentDetailModal({
           </div>
           <button
             type="button"
-            className="appointment-sheet-close-btn"
+            className="grid h-10 w-10 place-items-center rounded-full border border-slate-200 bg-slate-50 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
             onClick={onClose}
             aria-label="ปิดหน้าต่าง"
           >
@@ -295,17 +298,16 @@ export default function AppointmentDetailModal({
           </button>
         </header>
 
-        {/* Modal Body */}
-        <div className="appointment-sheet-body">
+        <div className="flex flex-col gap-3.5 overflow-y-auto px-5 py-4">
           {actionError && (
-            <div className="appointment-alert-error" role="alert">
+            <div className="flex items-center gap-2 rounded-[10px] border border-red-200 bg-red-50 px-3.5 py-2.5 text-[0.78rem] font-semibold text-red-700" role="alert">
               <AlertTriangle size={16} />
               <span>{actionError}</span>
             </div>
           )}
 
           {/* Floating Stepper */}
-          <ol className={`appointment-stepper status-${effectiveStatus}`} aria-label="ขั้นตอนสถานะการนัดรับสินค้า">
+          <ol className="m-0 flex list-none items-start justify-between pt-1 pb-1.5" aria-label="ขั้นตอนสถานะการนัดรับสินค้า">
             {stepperSteps.map((step, index) => {
               const isLast = index === stepperSteps.length - 1;
               const nextStep = stepperSteps[index + 1];
@@ -313,13 +315,49 @@ export default function AppointmentDetailModal({
                 nextStep?.state === 'cancelled'
                   ? 'cancelled'
                   : step.state === 'done' && nextStep && nextStep.state !== 'upcoming'
-                  ? 'done'
-                  : 'upcoming';
+                    ? 'done'
+                    : 'upcoming';
+
+              const nodeClass =
+                step.state === 'active'
+                  ? effectiveStatus === 'delivered'
+                    ? 'bg-blue-600 text-white shadow-[0_0_0_4px_rgba(37,99,235,0.2)]'
+                    : 'bg-amber-500 text-white shadow-[0_0_0_4px_rgba(245,158,11,0.22)]'
+                  : step.state === 'done'
+                    ? effectiveStatus === 'cancelled'
+                      ? 'bg-slate-400 text-white shadow-[0_0_0_1px_#94a3b8]'
+                      : 'bg-emerald-500 text-white shadow-[0_0_0_1px_#10b981]'
+                    : step.state === 'cancelled'
+                      ? 'bg-red-500 text-white shadow-[0_0_0_4px_rgba(239,68,68,0.2)]'
+                      : 'bg-slate-200 text-slate-500 shadow-[0_0_0_1px_#cbd5e1]';
+
+              const labelClass =
+                step.state === 'active'
+                  ? 'font-extrabold text-slate-900'
+                  : step.state === 'done'
+                    ? effectiveStatus === 'cancelled'
+                      ? 'font-bold text-slate-500'
+                      : 'font-bold text-emerald-800'
+                    : step.state === 'cancelled'
+                      ? 'font-extrabold text-red-700'
+                      : 'font-bold text-slate-500';
+
+              const sublabelClass =
+                step.state === 'active'
+                  ? effectiveStatus === 'delivered'
+                    ? 'font-semibold text-blue-700'
+                    : 'font-semibold text-amber-700'
+                  : step.state === 'cancelled'
+                    ? 'text-red-600'
+                    : 'text-slate-400';
 
               return (
-                <li key={step.key} className={`appointment-step step-${step.state}`}>
-                  <div className="appointment-step-track">
-                    <span className="appointment-step-node" aria-hidden="true">
+                <li key={step.key} className="flex min-w-0 flex-1 flex-col items-center text-center">
+                  <div className="relative mb-[7px] flex w-full items-center justify-center">
+                    <span
+                      className={`relative z-[1] inline-flex h-[26px] w-[26px] items-center justify-center rounded-full border-2 border-white text-[0.72rem] font-extrabold transition-all ${nodeClass}`}
+                      aria-hidden="true"
+                    >
                       {step.state === 'done' ? (
                         <Check size={13} strokeWidth={3} />
                       ) : step.state === 'cancelled' ? (
@@ -328,11 +366,22 @@ export default function AppointmentDetailModal({
                         <span>{index + 1}</span>
                       )}
                     </span>
-                    {!isLast && <span className={`appointment-step-line line-${lineState}`} aria-hidden="true" />}
+                    {!isLast && (
+                      <span
+                        className={`absolute top-1/2 left-[calc(50%+16px)] h-[2.5px] w-[calc(100%-32px)] -translate-y-1/2 rounded-full ${
+                          lineState === 'done'
+                            ? 'bg-emerald-500'
+                            : lineState === 'cancelled'
+                              ? 'bg-red-400'
+                              : 'bg-slate-200'
+                        }`}
+                        aria-hidden="true"
+                      />
+                    )}
                   </div>
-                  <div className="appointment-step-text">
-                    <span className="appointment-step-label">{step.label}</span>
-                    <span className="appointment-step-sublabel">{step.sublabel}</span>
+                  <div className="flex flex-col items-center gap-0.5 px-1">
+                    <span className={`text-[0.74rem] leading-[1.25] ${labelClass}`}>{step.label}</span>
+                    <span className={`text-[0.65rem] leading-[1.2] ${sublabelClass}`}>{step.sublabel}</span>
                   </div>
                 </li>
               );
@@ -340,26 +389,28 @@ export default function AppointmentDetailModal({
           </ol>
 
           {/* Product Preview Card */}
-          <div className="appointment-product-card">
+          <div className="flex items-center gap-3.5 rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-3">
             {appointment.image ? (
               <img
                 src={appointment.image}
                 alt={appointment.title || appointment.productTitle}
-                className="appointment-product-thumb"
+                className="h-[58px] w-[58px] shrink-0 rounded-xl bg-slate-200 object-cover"
               />
             ) : (
-              <div className="appointment-product-thumb-placeholder">
+              <div className="grid h-[58px] w-[58px] shrink-0 place-items-center rounded-xl bg-slate-200 text-slate-400">
                 <ShoppingBag size={24} />
               </div>
             )}
-            <div className="appointment-product-info">
-              <h3 className="appointment-product-title">{appointment.title || appointment.productTitle}</h3>
-              <div className="appointment-product-pricing">
-                <span className="appointment-product-price">
+            <div className="min-w-0 flex-1">
+              <h3 className="m-0 mb-1 truncate text-[0.86rem] font-bold text-slate-900">
+                {appointment.title || appointment.productTitle}
+              </h3>
+              <div className="flex items-baseline gap-2">
+                <span className="text-base font-extrabold text-pink-600 tabular-nums">
                   {formatPrice(appointment.price || appointment.totalPrice)}
                 </span>
                 {appointment.quantity > 1 && (
-                  <span className="appointment-product-qty">
+                  <span className="text-[0.72rem] font-semibold text-slate-500">
                     ({formatPrice(appointment.unitPrice)} x {appointment.quantity} ชิ้น)
                   </span>
                 )}
@@ -368,83 +419,85 @@ export default function AppointmentDetailModal({
           </div>
 
           {/* Appointment Meta Details */}
-          <div className="appointment-details-list">
-            {/* Scheduled Time */}
-            <div className="appointment-detail-item">
-              <div className="detail-item-icon blue">
+          <div className="flex flex-col gap-2.5">
+            <div className="flex items-start gap-3 rounded-xl border border-slate-100 bg-white px-3 py-2.5">
+              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-blue-50 text-blue-600">
                 <CalendarDays size={18} />
               </div>
-              <div className="detail-item-content">
-                <span className="detail-item-label">เวลานัดหมายในมหาวิทยาลัย</span>
-                <strong className="detail-item-value highlight">
+              <div className="min-w-0 flex-1">
+                <span className="mb-0.5 block text-[0.66rem] font-semibold text-slate-500">เวลานัดหมายในมหาวิทยาลัย</span>
+                <strong className="block text-[0.84rem] font-bold text-blue-800">
                   {formatThaiDate(appointment.scheduledAt)}
                 </strong>
               </div>
             </div>
 
-            {/* Pickup Location */}
-            <div className="appointment-detail-item">
-              <div className="detail-item-icon amber">
+            <div className="flex items-start gap-3 rounded-xl border border-slate-100 bg-white px-3 py-2.5">
+              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-amber-50 text-amber-600">
                 <MapPin size={18} />
               </div>
-              <div className="detail-item-content">
-                <span className="detail-item-label">จุดนัดรับสินค้า</span>
-                <strong className="detail-item-value">
+              <div className="min-w-0 flex-1">
+                <span className="mb-0.5 block text-[0.66rem] font-semibold text-slate-500">จุดนัดรับสินค้า</span>
+                <strong className="block text-[0.84rem] font-bold text-slate-900">
                   {appointment.location || 'ไม่ระบุจุดนัดรับ'}
                 </strong>
               </div>
             </div>
 
-            {/* Counterparty with Display Name from Database */}
-            <div className="appointment-detail-item">
-              <div className={`detail-item-icon ${isBuyer ? 'seller-tint' : 'buyer-tint'}`}>
+            <div className="flex items-start gap-3 rounded-xl border border-slate-100 bg-white px-3 py-2.5">
+              <div
+                className={`grid h-9 w-9 shrink-0 place-items-center rounded-[10px] ${
+                  isBuyer ? 'bg-pink-50 text-pink-600' : 'bg-blue-50 text-blue-600'
+                }`}
+              >
                 <User size={18} />
               </div>
-              <div className="detail-item-content">
-                <span className="detail-item-label">
+              <div className="min-w-0 flex-1">
+                <span className="mb-0.5 block text-[0.66rem] font-semibold text-slate-500">
                   {isBuyer ? 'ผู้ขายสินค้า (เจ้าของร้าน)' : 'ผู้ซื้อสินค้า (ลูกค้านัดรับ)'}
                 </span>
-                <div className="partner-name-row">
-                  <strong className="detail-item-value partner-highlight">{partnerName}</strong>
-                  {appointment.partnerVerified && (
-                    <CheckCircle2 size={14} className="profile-verified-icon" />
-                  )}
-                  <span className={`partner-role-badge ${isBuyer ? 'badge-seller' : 'badge-buyer'}`}>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <strong className="text-[0.9rem] font-bold text-slate-900">{partnerName}</strong>
+                  {appointment.partnerVerified && <CheckCircle2 size={14} className="shrink-0 text-spu-teal" />}
+                  <span
+                    className={`inline-flex items-center rounded-md border px-[7px] py-px text-[0.64rem] font-extrabold ${
+                      isBuyer
+                        ? 'border-spu-pink-border bg-pink-50 text-pink-700'
+                        : 'border-blue-200 bg-blue-50 text-blue-700'
+                    }`}
+                  >
                     {isBuyer ? 'ผู้ขาย' : 'ผู้ซื้อ'}
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* Partner Contact */}
             {partnerContact && (
-              <div className="appointment-detail-item">
-                <div className="detail-item-icon purple">
+              <div className="flex items-start gap-3 rounded-xl border border-slate-100 bg-white px-3 py-2.5">
+                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-purple-50 text-purple-600">
                   <MessageCircle size={18} />
                 </div>
-                <div className="detail-item-content">
-                  <span className="detail-item-label">LINE / ช่องทางติดต่อ</span>
-                  <strong className="detail-item-value">{partnerContact}</strong>
+                <div className="min-w-0 flex-1">
+                  <span className="mb-0.5 block text-[0.66rem] font-semibold text-slate-500">LINE / ช่องทางติดต่อ</span>
+                  <strong className="block text-[0.84rem] font-bold text-slate-900">{partnerContact}</strong>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Cancellation Notice if within 30 mins */}
           {isPending && cannotCancelDueToTime && (
-            <div className="appointment-rule-warning">
-              <Lock size={15} />
+            <div className="flex items-center gap-2 rounded-[10px] border border-amber-200 bg-amber-50 px-3 py-2 text-[0.68rem] font-semibold leading-[1.35] text-amber-700">
+              <Lock size={15} className="shrink-0 text-amber-600" />
               <span>
                 ใกล้ถึงเวลานัดหมายน้อยกว่า 30 นาที ระบบปิดการกดยกเลิกอัตโนมัติ หากติดธุระกรุณาแจ้งคู่ค้าผ่านแชท
               </span>
             </div>
           )}
 
-          {/* Buyer Rating Summary (when already rated) */}
           {isBuyer && isCompleted && existingReview && (
-            <div className="appointment-rated-banner">
-              <div className="appointment-rated-header">
-                <span className="appointment-rated-title">
+            <div className="mt-3 flex flex-col gap-1.5 rounded-[14px] border border-amber-200 bg-amber-50 px-3.5 py-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-[0.82rem] font-bold text-amber-800">
                   {ratingSuccess ? 'ขอบคุณสำหรับการให้คะแนนร้านค้า!' : 'คุณให้คะแนนร้านค้านี้แล้ว'}
                 </span>
                 <StarRating
@@ -456,27 +509,25 @@ export default function AppointmentDetailModal({
                 />
               </div>
               {existingReview.review_text && (
-                <p className="appointment-rated-comment">“{existingReview.review_text}”</p>
+                <p className="m-0 text-[0.8rem] leading-[1.45] text-amber-900">“{existingReview.review_text}”</p>
               )}
             </div>
           )}
-
         </div>
 
-        {/* Action Confirmation Banner */}
         {confirmingAction && (
-          <div className="appointment-confirm-box" role="alertdialog">
-            <p>
+          <div className="border-t border-red-100 bg-[#fffbfb] px-5 pt-4 pb-2.5" role="alertdialog">
+            <p className="mb-3 text-center text-[0.82rem] font-bold text-slate-900">
               {confirmingAction === 'buyer_received'
-                ? 'ยืนยันว่าคุณได้รับสินค้านี้เรียบร้อยแล้วใช่หรือไม่? (ระบบจะเสร็จสิ้นรายการทันที)'
+                ? 'คุณได้รับสินค้านี้เรียบร้อยแล้วใช่หรือไม่? (ระบบจะเสร็จสิ้นรายการทันที)'
                 : confirmingAction === 'seller_delivered'
-                ? 'ยืนยันว่าคุณได้ส่งมอบสินค้านี้ให้ผู้ซื้อแล้วใช่หรือไม่? (ผู้ซื้อจะได้รับแจ้งเตือนให้กดยืนยัน)'
-                : 'คุณต้องการยกเลิกการนัดรับสินค้านี้ใช่หรือไม่? (การยกเลิกจะมีผลทันที)'}
+                  ? 'คุณได้ส่งมอบสินค้านี้ให้ผู้ซื้อแล้วใช่หรือไม่?'
+                  : 'คุณต้องการยกเลิกการนัดรับสินค้านี้ใช่หรือไม่?'}
             </p>
-            <div className="appointment-confirm-actions">
+            <div className="grid grid-cols-2 gap-2.5">
               <button
                 type="button"
-                className="confirm-btn-secondary"
+                className="min-h-[42px] rounded-[10px] bg-slate-100 text-[0.82rem] font-bold text-slate-600 hover:bg-slate-200"
                 onClick={() => setConfirmingAction(null)}
                 disabled={isSubmitting}
               >
@@ -484,10 +535,8 @@ export default function AppointmentDetailModal({
               </button>
               <button
                 type="button"
-                className={`confirm-btn-primary ${
-                  confirmingAction === 'cancel'
-                    ? 'danger'
-                    : 'success'
+                className={`min-h-[42px] rounded-[10px] text-[0.82rem] font-extrabold text-white ${
+                  confirmingAction === 'cancel' ? 'bg-red-600 hover:bg-red-700' : 'bg-emerald-600 hover:bg-emerald-700'
                 }`}
                 onClick={() => handleConfirmAction(confirmingAction)}
                 disabled={isSubmitting}
@@ -495,22 +544,20 @@ export default function AppointmentDetailModal({
                 {isSubmitting
                   ? 'กำลังบันทึก...'
                   : confirmingAction === 'buyer_received'
-                  ? 'ยืนยันได้รับของ'
-                  : confirmingAction === 'seller_delivered'
-                  ? 'ยืนยันส่งมอบ'
-                  : 'ยืนยันยกเลิก'}
+                    ? 'ยืนยันได้รับของ'
+                    : confirmingAction === 'seller_delivered'
+                      ? 'ยืนยันส่งมอบ'
+                      : 'ยืนยันยกเลิก'}
               </button>
             </div>
           </div>
         )}
 
-        {/* Footer Actions */}
         {!confirmingAction && (
-          <footer className="appointment-sheet-footer">
-            {/* Chat Action Always Available */}
+          <footer className="flex flex-col gap-2.5 border-t border-slate-100 px-5 pt-3.5 pb-2">
             <button
               type="button"
-              className="appointment-btn-chat"
+              className="flex min-h-[46px] w-full items-center justify-center gap-2 rounded-[14px] bg-slate-900 text-[0.88rem] font-bold text-white transition-colors hover:bg-slate-800"
               onClick={handleChatClick}
               aria-label="แชทกับคู่ค้า"
             >
@@ -518,12 +565,11 @@ export default function AppointmentDetailModal({
               <span>แชทกับ{isBuyer ? 'ผู้ขาย' : 'ผู้ซื้อ'} ({partnerName})</span>
             </button>
 
-            {/* Buyer Pending: Can click Received (instantly completes) OR Cancel */}
             {isBuyer && isPending && (
-              <div className="appointment-pending-actions">
+              <div className="grid grid-cols-[1fr_1.6fr] gap-2.5">
                 <button
                   type="button"
-                  className="appointment-btn-cancel"
+                  className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border-[1.5px] border-red-300 bg-white text-[0.82rem] font-bold text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-50 disabled:text-slate-400 disabled:opacity-55"
                   onClick={() => setConfirmingAction('cancel')}
                   disabled={cannotCancelDueToTime}
                   title={cannotCancelDueToTime ? 'ไม่สามารถยกเลิกได้ภายใน 30 นาทีก่อนเวลานัด' : 'ยกเลิกการนัดรับ'}
@@ -533,7 +579,7 @@ export default function AppointmentDetailModal({
                 </button>
                 <button
                   type="button"
-                  className="appointment-btn-complete"
+                  className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-gradient-to-br from-emerald-600 to-emerald-500 text-[0.84rem] font-extrabold text-white shadow-[0_4px_14px_rgba(16,185,129,0.25)] transition-transform hover:-translate-y-px"
                   onClick={() => setConfirmingAction('buyer_received')}
                 >
                   <CheckCircle2 size={16} />
@@ -542,12 +588,11 @@ export default function AppointmentDetailModal({
               </div>
             )}
 
-            {/* Buyer Delivered: Seller already delivered -> Buyer confirms */}
             {isBuyer && isDelivered && (
-              <div className="appointment-single-action">
+              <div className="w-full">
                 <button
                   type="button"
-                  className="appointment-btn-complete full-width"
+                  className="flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl bg-gradient-to-br from-emerald-600 to-emerald-500 text-[0.84rem] font-extrabold text-white shadow-[0_4px_14px_rgba(16,185,129,0.25)] transition-transform hover:-translate-y-px"
                   onClick={() => setConfirmingAction('buyer_received')}
                 >
                   <CheckCircle2 size={18} />
@@ -556,12 +601,11 @@ export default function AppointmentDetailModal({
               </div>
             )}
 
-            {/* Seller Pending: Can click Delivered (awaits buyer confirm) OR Cancel */}
             {!isBuyer && isPending && (
-              <div className="appointment-pending-actions">
+              <div className="grid grid-cols-[1fr_1.6fr] gap-2.5">
                 <button
                   type="button"
-                  className="appointment-btn-cancel"
+                  className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border-[1.5px] border-red-300 bg-white text-[0.82rem] font-bold text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-50 disabled:text-slate-400 disabled:opacity-55"
                   onClick={() => setConfirmingAction('cancel')}
                   disabled={cannotCancelDueToTime}
                   title={cannotCancelDueToTime ? 'ไม่สามารถยกเลิกได้ภายใน 30 นาทีก่อนเวลานัด' : 'ยกเลิกการนัดรับ'}
@@ -571,7 +615,7 @@ export default function AppointmentDetailModal({
                 </button>
                 <button
                   type="button"
-                  className="appointment-btn-delivered"
+                  className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-gradient-to-br from-blue-700 to-blue-500 text-[0.84rem] font-extrabold text-white shadow-[0_4px_14px_rgba(37,99,235,0.25)] transition-transform hover:-translate-y-px"
                   onClick={() => setConfirmingAction('seller_delivered')}
                 >
                   <Send size={16} />
@@ -579,17 +623,17 @@ export default function AppointmentDetailModal({
                 </button>
               </div>
             )}
-            {/* Buyer Completed & Not Yet Rated: Show Rate Store button */}
+
             {isBuyer &&
               isCompleted &&
               !existingReview &&
               appointment.sellerId &&
               currentUser?.id &&
               appointment.sellerId !== currentUser.id && (
-                <div className="appointment-single-action">
+                <div className="w-full">
                   <button
                     type="button"
-                    className="appointment-btn-rate full-width"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-amber-300 bg-gradient-to-br from-amber-50 to-amber-100 px-4 py-[11px] text-[0.88rem] font-bold text-amber-700 transition-all hover:-translate-y-px hover:shadow-[0_4px_12px_rgba(245,158,11,0.2)]"
                     onClick={() => {
                       setRatingError('');
                       setShowRatingPopup(true);
@@ -603,32 +647,33 @@ export default function AppointmentDetailModal({
           </footer>
         )}
 
-        {/* Small Rating Pop-up on Completed Pickup */}
         {showRatingPopup && (
           <div
-            className="appointment-rating-popup-backdrop"
+            className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/45 p-4 backdrop-blur-xs"
             onClick={() => !isRatingSubmitting && setShowRatingPopup(false)}
             role="presentation"
           >
             <form
-              className="appointment-rating-popup"
+              className="flex w-full max-w-[360px] flex-col gap-3.5 rounded-[20px] border border-slate-100 bg-white p-[18px] shadow-[0_20px_45px_rgba(15,23,42,0.22)] animate-[ratingPopupIn_0.22s_cubic-bezier(0.16,1,0.3,1)]"
               role="dialog"
               aria-modal="true"
               aria-labelledby="rating-popup-title"
               onClick={(e) => e.stopPropagation()}
               onSubmit={handleSubmitRating}
             >
-              <div className="appointment-rating-popup-head">
-                <div className="appointment-rating-popup-icon">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
                   <Store size={18} />
                 </div>
-                <div className="appointment-rating-popup-titles">
-                  <h3 id="rating-popup-title">นัดรับสำเร็จ! ให้คะแนนร้านค้า</h3>
-                  <p>{partnerName}</p>
+                <div className="min-w-0 flex-1">
+                  <h3 id="rating-popup-title" className="m-0 text-[0.96rem] font-bold leading-tight text-slate-900">
+                    นัดรับสำเร็จ! ให้คะแนนร้านค้า
+                  </h3>
+                  <p className="mt-0.5 truncate text-[0.78rem] text-slate-500">{partnerName}</p>
                 </div>
                 <button
                   type="button"
-                  className="appointment-rating-popup-close"
+                  className="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
                   onClick={() => setShowRatingPopup(false)}
                   disabled={isRatingSubmitting}
                   aria-label="ปิดหน้าต่างให้คะแนน"
@@ -637,11 +682,11 @@ export default function AppointmentDetailModal({
                 </button>
               </div>
 
-              <div className="appointment-rating-popup-body">
-                <span className="appointment-rating-product-name">
+              <div className="flex flex-col gap-3">
+                <span className="block truncate rounded-[10px] border border-slate-200 bg-slate-50 px-2.5 py-2 text-center text-[0.8rem] font-semibold text-slate-700">
                   {appointment.title || appointment.productTitle}
                 </span>
-                <div className="appointment-rating-stars-wrap">
+                <div className="flex flex-col items-center gap-1.5 py-1.5">
                   <StarRating
                     value={ratingValue}
                     onValueChange={setRatingValue}
@@ -650,12 +695,12 @@ export default function AppointmentDetailModal({
                     allowClear={false}
                     label="ให้คะแนนร้านค้า"
                   />
-                  <span className="appointment-rating-hint">
+                  <span className="text-[0.82rem] font-semibold text-amber-600">
                     {RATING_LABELS[ratingValue] || 'เลือกดาวเพื่อประเมินร้านค้า'}
                   </span>
                 </div>
                 <textarea
-                  className="appointment-rating-textarea"
+                  className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-[0.84rem] text-slate-900 outline-none transition-colors focus:border-amber-500 focus:bg-white"
                   rows={2}
                   maxLength={1000}
                   value={reviewText}
@@ -664,17 +709,17 @@ export default function AppointmentDetailModal({
                   disabled={isRatingSubmitting}
                 />
                 {ratingError && (
-                  <div className="appointment-alert-error" role="alert">
+                  <div className="flex items-center gap-2 rounded-[10px] border border-red-200 bg-red-50 px-3 py-2 text-[0.78rem] font-semibold text-red-700" role="alert">
                     <AlertTriangle size={14} />
                     <span>{ratingError}</span>
                   </div>
                 )}
               </div>
 
-              <div className="appointment-rating-popup-actions">
+              <div className="grid grid-cols-[1fr_1.4fr] gap-2">
                 <button
                   type="button"
-                  className="confirm-btn-secondary"
+                  className="min-h-[42px] rounded-[10px] bg-slate-100 text-[0.82rem] font-bold text-slate-600 hover:bg-slate-200"
                   onClick={() => setShowRatingPopup(false)}
                   disabled={isRatingSubmitting}
                 >
@@ -682,7 +727,7 @@ export default function AppointmentDetailModal({
                 </button>
                 <button
                   type="submit"
-                  className="appointment-btn-rate-submit"
+                  className="rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 px-3.5 py-2.5 text-[0.88rem] font-bold text-white transition-all hover:-translate-y-px disabled:cursor-not-allowed disabled:opacity-55"
                   disabled={isRatingSubmitting || ratingValue < 1}
                 >
                   {isRatingSubmitting ? 'กำลังบันทึก...' : 'ส่งคะแนน'}

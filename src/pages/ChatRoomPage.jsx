@@ -384,7 +384,6 @@ export default function ChatRoomPage({ conversationId, currentUser, chatPartner,
     setError(''); setSelectedImage(file);
   };
 
-  const quickReplies = ['สวัสดีครับ/ค่ะ สนใจสินค้าครับ', 'สินค้ายังอยู่ไหมครับ/คะ', 'สะดวกนัดรับที่ไหนครับ/คะ'];
   const partner = { ...(chatPartner || {}), ...(roomInfo || {}) };
   const partnerId = partner.id || partner.partnerId || roomInfo?.partnerId;
   const isPartnerOnline = Boolean(
@@ -523,90 +522,390 @@ export default function ChatRoomPage({ conversationId, currentUser, chatPartner,
     buyerContact: roomAppointment.buyer_id === currentUser?.id ? (currentUser?.contact || '') : partnerMeta.contact,
   } : null;
 
-  return <div className="chat-room-container chat-room-live">
-    <header className="chat-room-header">
-      <button type="button" className="chat-room-back-btn" onClick={onBack} aria-label="ย้อนกลับ"><ArrowLeft size={18} /></button>
-      <div className="chat-partner-info-box"><div className="partner-avatar-wrap">{showPartnerAvatar ? <img src={partnerAvatarUrl} alt={partner.name || 'คู่สนทนา'} className="partner-avatar" onError={() => setFailedAvatarUrl(partnerAvatarUrl)} /> : <div className="chat-partner-avatar-fallback">{partner.name?.charAt(0) || 'SPU'}</div>}<span className={`partner-online-dot ${isPartnerOnline ? 'is-online' : 'is-offline'}`} /></div><div className="partner-details"><div className="partner-name-row"><h2>{partner.name || 'คู่สนทนา'}</h2>{partnerMeta.isVerified && <CheckCircle2 size={14} className="profile-verified-icon" />}{partner.roleLabel && <span className="chat-role-badge">{partner.roleLabel}</span>}</div><span className={`partner-subtext ${isPartnerOnline ? 'is-online' : 'is-offline'}`}>{isPartnerOnline ? 'ออนไลน์' : 'ออฟไลน์'}</span></div></div>
-    </header>
-    <button type="button" className="chat-pinned-product-card" onClick={() => { if (roomInfo?.productId) onViewProduct?.(roomInfo.productId); }} disabled={!roomInfo?.productId} aria-label="ดูรายละเอียดสินค้าในแชท"><div className="pinned-product-main">
-      {partner?.image ? <img src={partner.image} alt={partner.productTitle || 'สินค้า'} className="pinned-prod-thumb" /> : <div className="pinned-prod-thumb chat-product-placeholder"><ShieldCheck size={20} /></div>}
-      <div className="pinned-prod-info"><h4 className="pinned-prod-title">{partner?.productTitle || 'ห้องซื้อขาย SPU Market'}</h4><div className="pinned-prod-meta">{partner?.price != null && <span className="pinned-prod-price">฿{Number(partner.price).toLocaleString('th-TH')}</span>}{partner?.location && <span className="pinned-prod-loc"><MapPin size={11} />{partner.location}</span>}</div></div>
-    </div></button>
-    {roomAppointment && <div className="chat-appointment-actions-bar">
-      <button
-        type="button"
-        className="chat-appointment-action-btn is-edit"
-        onClick={openScheduleModal}
-        disabled={isAppointmentClosed}
-        title={isAppointmentClosed ? 'ไม่สามารถแก้ไขเวลานัดรับของรายการที่เสร็จสิ้นหรือยกเลิกแล้ว' : 'แก้ไขวันที่และเวลานัดรับ'}
-      >
-        <CalendarClock size={15} />
-        <span>แก้ไขวันที่/เวลานัดรับ</span>
-      </button>
-      <button
-        type="button"
-        className="chat-appointment-action-btn is-status"
-        onClick={() => setShowAppointmentModal(true)}
-      >
-        <ClipboardCheck size={15} />
-        <span>อัพเดตสถานะนัดรับ</span>
-      </button>
-    </div>}
-    <div ref={messagesAreaRef} onScroll={handleMessagesScroll} onWheel={stopAutoScroll} onTouchStart={stopAutoScroll} className="chat-room-messages-area chat-live-messages">
-      <SkeletonReveal loading={isLoadingMessages} className="chat-message-skeleton-wrap" skeleton={<div className="chat-message-skeleton" aria-hidden="true">{[0, 1, 2, 3].map((item) => <div className={`chat-message-skeleton-row ${item % 2 ? 'mine' : ''}`} key={item}><SkeletonBlock /><SkeletonBlock /></div>)}</div>}>
-      {messages.length === 0 && <div className="chat-live-start-note">เริ่มต้นบทสนทนาเกี่ยวกับสินค้านี้ได้เลย</div>}
-      {messages.filter((message) => !hiddenMessageIds.has(message.id)).map((message) => {
-        if (message.message_type === 'text' && message.message_text?.startsWith(SYSTEM_NOTICE_PREFIX)) {
-          return <div key={message.id} className="chat-live-start-note">{message.message_text.slice(SYSTEM_NOTICE_PREFIX.length)}</div>;
-        }
-        const mine = message.sender_id === currentUser?.id; const otherName = partner?.name || '\u0e04\u0e39\u0e48\u0e2a\u0e19\u0e17\u0e19\u0e32'; const replyLabel = message.reply?.sender_id === currentUser?.id ? (mine ? '\u0e15\u0e2d\u0e1a\u0e01\u0e25\u0e31\u0e1a\u0e02\u0e49\u0e2d\u0e04\u0e27\u0e32\u0e21\u0e02\u0e2d\u0e07\u0e04\u0e38\u0e13' : `${otherName} \u0e15\u0e2d\u0e1a\u0e01\u0e25\u0e31\u0e1a\u0e04\u0e38\u0e13`) : `\u0e15\u0e2d\u0e1a\u0e01\u0e25\u0e31\u0e1a ${otherName}`; return <div key={message.id} ref={(node) => { if (node) messageRefs.current.set(message.id, node); else messageRefs.current.delete(message.id); }} className={`chat-bubble-row ${mine ? 'row-me' : 'row-partner'} ${focusedMessageId === message.id ? 'message-focus-pop' : ''} ${mine && activeMessageMenu === message.id ? 'message-menu-open' : ''} ${mine && activeMessageMenu === message.id && messageMenuClosing ? 'message-menu-closing' : ''}`} onTouchStart={(event) => beginTouch(message, event)} onTouchMove={(event) => moveTouch(message, event)} onTouchEnd={(event) => endTouch(message, event)} onTouchCancel={() => { touchStartX.current = null; setSwipeOffsets((current) => ({ ...current, [message.id]: 0 })); setReplySwipeIndicator(null); }} onDoubleClick={() => { if (mine) showMessageActions(message.id); }} onContextMenu={(event) => { event.preventDefault(); if (mine) activeMessageMenu === message.id ? closeMessageActions() : showMessageActions(message.id); }}>
-        {replySwipeIndicator?.messageId === message.id && <span className="chat-swipe-reply-indicator" style={{ opacity: replySwipeIndicator.opacity }}><Reply size={16} /></span>}
-        {!mine && (showPartnerAvatar ? <img src={partnerAvatarUrl} alt={partner.name || 'คู่สนทนา'} className="bubble-avatar" onError={() => setFailedAvatarUrl(partnerAvatarUrl)} /> : <div className="bubble-avatar chat-bubble-avatar-fallback">{partner?.name?.charAt(0) || 'S'}</div>)}
-        <div className={`chat-bubble ${mine ? 'bubble-me' : 'bubble-partner'}`} style={{ transform: `translateX(${swipeOffsets[message.id] || 0}px)` }}>
-          {message.reply && <button type="button" className="chat-reply-quote" onTouchStart={(event) => event.stopPropagation()} onTouchEnd={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); focusMessage(message.reply.id); }} aria-label="เลื่อนไปยังข้อความที่ตอบกลับ"><strong>{replyLabel}</strong>{message.reply.message_type === 'image' ? <span className="chat-reply-image-content"><img src={message.reply.image_url} alt="รูปภาพที่ตอบกลับ" loading="lazy" /><span>รูปภาพ</span></span> : <span>{message.reply.message_text}</span>}</button>}
-          {message.message_type === 'image' ? <div className="bubble-image-wrap"><ImagePreview src={message.image_url} alt="ภาพที่ส่งในแชท" width={480} height={360} className="bubble-img chat-message-image" /></div> : <p className="bubble-text">{message.message_text}{message.edited_at && <small className="chat-edited-mark"> (แก้ไขแล้ว)</small>}</p>}
-          <div className="bubble-meta"><span className="bubble-time">{new Date(message.created_at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น.</span>{mine && <CheckCheck size={13} className="bubble-check-icon" />}</div>
-        </div>
-        {mine && activeMessageMenu === message.id && <div className="chat-message-actions"><button type="button" title="แก้ไขข้อความ" aria-label="แก้ไขข้อความ" onClick={() => { startEdit(message); closeMessageActions(); }}><Pencil size={15} /></button><button type="button" title="ซ่อนข้อความจากหน้าจอนี้" aria-label="ซ่อนข้อความ" onClick={() => { hideMessage(message); closeMessageActions(); }}><Trash2 size={15} /></button></div>}
-      </div>; })}
-      </SkeletonReveal>
-      <div ref={endRef} />
-    </div>
-    {showScrollToLatest && <button type="button" className="chat-scroll-latest-btn" onClick={scrollToLatest} aria-label="เลื่อนไปยังข้อความล่าสุด" title="ข้อความล่าสุด"><ArrowDown size={20} /></button>}
-    {error && <p className="chat-live-error" role="alert">{error}</p>}
-    {!editingMessage && <div className="chat-quick-replies-bar">{quickReplies.map((reply) => <button key={reply} type="button" className="quick-reply-pill" onClick={() => { setReplyTarget(null); setText(reply); }}>{reply}</button>)}</div>}
-    <form className="chat-room-input-bar chat-compose-form" onSubmit={handleSubmit}>
-      <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={(event) => { chooseImage(event.target.files?.[0]); event.target.value = ''; }} />
-      {(replyTarget || editingMessage || imagePreview) && <div className="chat-compose-preview">
-        {imagePreview && <img src={imagePreview} alt="ตัวอย่างภาพก่อนส่ง" />}
-        {(replyTarget || editingMessage) && <div className="chat-compose-reference"><strong>{editingMessage ? 'กำลังแก้ไขข้อความ' : `ตอบกลับ ${replyTarget.sender_id === currentUser?.id ? 'ข้อความของคุณ' : partner?.name || 'คู่สนทนา'}`}</strong>{editingMessage ? <span>{text}</span> : replyTarget.message_type === 'image' ? <span className="chat-compose-reply-image"><img src={replyTarget.image_url} alt="รูปภาพที่ตอบกลับ" loading="lazy" /><span>รูปภาพ</span></span> : <span>{replyTarget.message_text}</span>}</div>}
-        {(imagePreview || replyTarget || editingMessage) && <button type="button" aria-label={editingMessage ? 'ยกเลิกการแก้ไข' : 'ปิดตัวอย่าง'} onClick={() => { if (imagePreview) setSelectedImage(null); if (editingMessage) cancelEdit(); else if (replyTarget) cancelReply(); }}><X size={17} /></button>}
-      </div>}
-      <button type="button" className="chat-input-tool-btn" aria-label="แนบรูปภาพ" disabled={sending} onClick={() => fileRef.current?.click()}><ImagePlus size={19} /></button>
-      <div className="chat-input-field-wrap"><input className="chat-room-input" value={text} onChange={(event) => setText(event.target.value)} placeholder="พิมพ์ข้อความ..." aria-label="ข้อความ" /></div>
-      <button type="submit" className="chat-send-btn" aria-label={editingMessage ? 'บันทึกการแก้ไข' : 'ส่งข้อความ'} disabled={sending || (!text.trim() && !selectedImage)}><Send size={17} /></button>
-    </form>
-    {showScheduleModal && roomAppointment && (
-      <div className="pickup-schedule-backdrop" role="presentation" onClick={() => !appointmentBusy && setShowScheduleModal(false)}>
-        <form className="pickup-schedule-dialog" role="dialog" aria-modal="true" aria-labelledby="chat-pickup-schedule-title" onSubmit={submitScheduleUpdate} onClick={(event) => event.stopPropagation()}>
-          <h2 id="chat-pickup-schedule-title">เลือกวันที่และเวลานัดรับ</h2>
-          <DateTimePicker value={scheduledDateTime} onChange={setScheduledDateTime} minDate={scheduleLimits.minDate} minTime={scheduleLimits.minTime} maxTime="18:00" disabled={appointmentBusy} />
-          {scheduleError && <div className="pickup-schedule-error" role="alert">{scheduleError}</div>}
-          <div className="pickup-schedule-actions">
-            <button type="button" onClick={() => setShowScheduleModal(false)} disabled={appointmentBusy}>ยกเลิก</button>
-            <button type="submit" disabled={appointmentBusy}>{appointmentBusy ? 'กำลังบันทึก...' : 'ยืนยันนัดรับ'}</button>
+  return (
+    <div className="relative flex h-dvh w-full flex-col overflow-hidden bg-[#fff7fb] text-[#172033]">
+      <header className="z-20 w-full shrink-0 border-b border-pink-100 bg-white">
+        <div className="mx-auto flex min-h-14 w-full max-w-4xl items-center justify-between gap-2.5 px-3.5 sm:px-6">
+          <button
+            type="button"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-pink-700 transition-colors hover:bg-pink-100"
+            onClick={onBack}
+            aria-label="ย้อนกลับ"
+          >
+            <ArrowLeft size={18} />
+          </button>
+          <div className="flex min-w-0 flex-1 items-center gap-2.5">
+            <div className="relative h-10 w-10 shrink-0">
+              {showPartnerAvatar ? (
+                <img
+                  src={partnerAvatarUrl}
+                  alt={partner.name || 'คู่สนทนา'}
+                  className="h-full w-full rounded-full object-cover"
+                  onError={() => setFailedAvatarUrl(partnerAvatarUrl)}
+                />
+              ) : (
+                <div className="grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-pink-500 to-violet-500 font-extrabold text-white">
+                  {partner.name?.charAt(0) || 'SPU'}
+                </div>
+              )}
+              <span
+                className={`absolute right-0 bottom-0 h-2.5 w-2.5 rounded-full border-2 border-white ${
+                  isPartnerOnline ? 'bg-emerald-500' : 'bg-slate-400'
+                }`}
+              />
+            </div>
+            <div className="flex min-w-0 flex-col gap-px">
+              <div className="flex items-center gap-1.5">
+                <h2 className="m-0 truncate text-[0.88rem] sm:text-base font-extrabold text-[#172033]">
+                  {partner.name || 'คู่สนทนา'}
+                </h2>
+                {partnerMeta.isVerified && <CheckCircle2 size={14} className="shrink-0 text-spu-teal" />}
+                {partner.roleLabel && (
+                  <span className="inline-flex items-center whitespace-nowrap rounded-full border border-pink-300 bg-[#fff1f7] px-[7px] py-0.5 text-[0.58rem] font-extrabold leading-[1.3] text-pink-700">
+                    {partner.roleLabel}
+                  </span>
+                )}
+              </div>
+              <span className={`text-[0.62rem] ${isPartnerOnline ? 'font-semibold text-spu-teal' : 'text-slate-500'}`}>
+                {isPartnerOnline ? 'ออนไลน์' : 'ออฟไลน์'}
+              </span>
+            </div>
           </div>
-        </form>
+        </div>
+      </header>
+
+      <div className="mx-auto flex w-full max-w-4xl shrink-0 flex-col px-2.5 pt-2 sm:px-6">
+        <button
+          type="button"
+          className="flex w-full cursor-pointer flex-col gap-2 rounded-[14px] border border-spu-pink-border bg-white px-3.5 py-2.5 text-left shadow-[0_3px_12px_rgba(15,23,42,0.05)] transition-all duration-150 hover:-translate-y-px hover:border-pink-400 hover:shadow-[0_6px_18px_rgba(190,24,93,0.12)] disabled:cursor-default disabled:opacity-100 disabled:hover:translate-y-0 disabled:hover:border-spu-pink-border disabled:hover:shadow-[0_3px_12px_rgba(15,23,42,0.05)]"
+          onClick={() => { if (roomInfo?.productId) onViewProduct?.(roomInfo.productId); }}
+          disabled={!roomInfo?.productId}
+          aria-label="ดูรายละเอียดสินค้าในแชท"
+        >
+          <div className="flex items-center gap-2.5">
+            {partner?.image ? (
+              <img src={partner.image} alt={partner.productTitle || 'สินค้า'} className="h-12 w-12 shrink-0 rounded-lg object-cover" />
+            ) : (
+              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-pink-100 text-pink-700">
+                <ShieldCheck size={20} />
+              </div>
+            )}
+            <div className="min-w-0 flex-1">
+              <h4 className="mb-0.5 truncate text-[0.78rem] sm:text-sm font-bold text-slate-800">
+                {partner?.productTitle || 'ห้องซื้อขาย SPU Market'}
+              </h4>
+              <div className="flex items-center gap-2">
+                {partner?.price != null && (
+                  <span className="text-[0.86rem] font-extrabold text-spu-pink tabular-nums">
+                    ฿{Number(partner.price).toLocaleString('th-TH')}
+                  </span>
+                )}
+                {partner?.location && (
+                  <span className="inline-flex items-center gap-0.5 truncate text-[0.62rem] text-slate-500">
+                    <MapPin size={11} className="shrink-0" />
+                    <span className="truncate">{partner.location}</span>
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        </button>
+
+        {roomAppointment && (
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              className="inline-flex min-w-0 items-center justify-center gap-1.5 rounded-xl border border-spu-pink-border bg-white px-3 py-2 text-[0.74rem] font-bold text-pink-700 shadow-[0_2px_8px_rgba(15,23,42,0.04)] transition-all hover:-translate-y-px hover:border-pink-400 hover:bg-spu-pink-light disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={openScheduleModal}
+              disabled={isAppointmentClosed}
+              title={isAppointmentClosed ? 'ไม่สามารถแก้ไขเวลานัดรับของรายการที่เสร็จสิ้นหรือยกเลิกแล้ว' : 'แก้ไขวันที่และเวลานัดรับ'}
+            >
+              <CalendarClock size={15} className="shrink-0" />
+              <span className="truncate">แก้ไขวันที่/เวลานัดรับ</span>
+            </button>
+            <button
+              type="button"
+              className="inline-flex min-w-0 items-center justify-center gap-1.5 rounded-xl border border-pink-300 bg-pink-50 px-3 py-2 text-[0.74rem] font-bold text-pink-800 shadow-[0_2px_8px_rgba(15,23,42,0.04)] transition-all hover:-translate-y-px hover:border-pink-400 hover:bg-pink-100 disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={() => setShowAppointmentModal(true)}
+            >
+              <ClipboardCheck size={15} className="shrink-0" />
+              <span className="truncate">อัพเดตสถานะนัดรับ</span>
+            </button>
+          </div>
+        )}
       </div>
-    )}
-    {showAppointmentModal && appointmentDetail && (
-      <AppointmentDetailModal
-        appointment={appointmentDetail}
-        currentUser={currentUser}
-        onClose={() => setShowAppointmentModal(false)}
-        onOpenChat={() => setShowAppointmentModal(false)}
-        onUpdateStatus={handleUpdateAppointmentStatus}
-      />
-    )}
-  </div>;
+
+      <div
+        ref={messagesAreaRef}
+        onScroll={handleMessagesScroll}
+        onWheel={stopAutoScroll}
+        onTouchStart={stopAutoScroll}
+        className="mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col gap-1.5 overflow-y-auto px-3.5 py-3.5 sm:px-6"
+      >
+        <SkeletonReveal
+          loading={isLoadingMessages}
+          className="chat-message-skeleton-wrap"
+          skeleton={
+            <div className="chat-message-skeleton" aria-hidden="true">
+              {[0, 1, 2, 3].map((item) => (
+                <div className={`chat-message-skeleton-row ${item % 2 ? 'mine' : ''}`} key={item}>
+                  <SkeletonBlock />
+                  <SkeletonBlock />
+                </div>
+              ))}
+            </div>
+          }
+        >
+          {messages.length === 0 && (
+            <div className="mx-auto my-2.5 block w-fit max-w-[calc(100%-16px)] rounded-[20px] bg-slate-200 px-3.5 py-1.5 text-center text-[0.68rem] leading-[1.4] text-slate-500">
+              เริ่มต้นบทสนทนาเกี่ยวกับสินค้านี้ได้เลย
+            </div>
+          )}
+          {messages.filter((message) => !hiddenMessageIds.has(message.id)).map((message) => {
+            if (message.message_type === 'text' && message.message_text?.startsWith(SYSTEM_NOTICE_PREFIX)) {
+              return (
+                <div
+                  key={message.id}
+                  className="mx-auto my-2.5 block w-fit max-w-[calc(100%-16px)] rounded-[20px] bg-slate-200 px-3.5 py-1.5 text-center text-[0.68rem] leading-[1.4] text-slate-500"
+                >
+                  {message.message_text.slice(SYSTEM_NOTICE_PREFIX.length)}
+                </div>
+              );
+            }
+            const mine = message.sender_id === currentUser?.id;
+            const otherName = partner?.name || 'คู่สนทนา';
+            const replyLabel = message.reply?.sender_id === currentUser?.id
+              ? (mine ? 'ตอบกลับข้อความของคุณ' : `${otherName} ตอบกลับคุณ`)
+              : `ตอบกลับ ${otherName}`;
+
+            return (
+              <div
+                key={message.id}
+                ref={(node) => { if (node) messageRefs.current.set(message.id, node); else messageRefs.current.delete(message.id); }}
+                className={`chat-bubble-row relative flex touch-pan-y select-none items-end gap-2 ${
+                  mine ? 'row-me justify-end' : 'row-partner justify-start'
+                } ${focusedMessageId === message.id ? 'message-focus-pop' : ''} ${
+                  mine && activeMessageMenu === message.id ? 'message-menu-open' : ''
+                } ${mine && activeMessageMenu === message.id && messageMenuClosing ? 'message-menu-closing' : ''}`}
+                onTouchStart={(event) => beginTouch(message, event)}
+                onTouchMove={(event) => moveTouch(message, event)}
+                onTouchEnd={(event) => endTouch(message, event)}
+                onTouchCancel={() => { touchStartX.current = null; setSwipeOffsets((current) => ({ ...current, [message.id]: 0 })); setReplySwipeIndicator(null); }}
+                onDoubleClick={() => { if (mine) showMessageActions(message.id); }}
+                onContextMenu={(event) => { event.preventDefault(); if (mine) activeMessageMenu === message.id ? closeMessageActions() : showMessageActions(message.id); }}
+              >
+                {replySwipeIndicator?.messageId === message.id && (
+                  <span
+                    className={`pointer-events-none absolute top-1/2 z-[2] grid h-[30px] w-[30px] -translate-y-1/2 scale-85 place-items-center rounded-full bg-white text-pink-700 shadow-[0_2px_8px_rgba(190,24,93,0.2)] transition-all duration-130 ${
+                      mine ? 'right-2' : 'left-[42px]'
+                    }`}
+                    style={{ opacity: replySwipeIndicator.opacity }}
+                  >
+                    <Reply size={16} />
+                  </span>
+                )}
+                {!mine && (
+                  showPartnerAvatar ? (
+                    <img
+                      src={partnerAvatarUrl}
+                      alt={partner.name || 'คู่สนทนา'}
+                      className="h-7 w-7 shrink-0 rounded-full object-cover"
+                      onError={() => setFailedAvatarUrl(partnerAvatarUrl)}
+                    />
+                  ) : (
+                    <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-gradient-to-br from-pink-500 to-violet-500 text-[0.65rem] font-extrabold text-white">
+                      {partner?.name?.charAt(0) || 'S'}
+                    </div>
+                  )
+                )}
+                <div
+                  className={`chat-bubble relative flex max-w-[78%] sm:max-w-[65%] flex-col gap-1 rounded-2xl px-3 py-2.5 transition-transform duration-180 ease-[cubic-bezier(.2,.75,.25,1)] will-change-transform ${
+                    mine
+                      ? 'rounded-br-[4px] bg-spu-pink text-white'
+                      : 'rounded-bl-[4px] border border-spu-pink-border bg-white text-slate-800'
+                  } ${mine && activeMessageMenu === message.id ? 'scale-[1.01]' : ''}`}
+                  style={{ transform: `translateX(${swipeOffsets[message.id] || 0}px)` }}
+                >
+                  {message.reply && (
+                    <button
+                      type="button"
+                      className={`mb-1 grid w-full max-w-full cursor-pointer gap-0.5 overflow-hidden rounded-[5px] border-l-[3px] px-2 py-1 text-left ${
+                        mine
+                          ? 'border-l-white/80 bg-white/18 text-white'
+                          : 'border-l-pink-400 bg-white/48 text-slate-500'
+                      }`}
+                      onTouchStart={(event) => event.stopPropagation()}
+                      onTouchEnd={(event) => event.stopPropagation()}
+                      onClick={(event) => { event.stopPropagation(); focusMessage(message.reply.id); }}
+                      aria-label="เลื่อนไปยังข้อความที่ตอบกลับ"
+                    >
+                      <strong className={`truncate text-[0.62rem] ${mine ? 'text-white' : 'text-pink-800'}`}>
+                        {replyLabel}
+                      </strong>
+                      {message.reply.message_type === 'image' ? (
+                        <span className="flex min-w-0 items-center gap-1.5">
+                          <img src={message.reply.image_url} alt="รูปภาพที่ตอบกลับ" loading="lazy" className="h-[34px] w-[34px] shrink-0 rounded-[5px] object-cover" />
+                          <span className="truncate text-[0.62rem]">รูปภาพ</span>
+                        </span>
+                      ) : (
+                        <span className="truncate text-[0.62rem]">{message.reply.message_text}</span>
+                      )}
+                    </button>
+                  )}
+                  {message.message_type === 'image' ? (
+                    <div className="relative mt-1 overflow-hidden rounded-[10px]">
+                      <ImagePreview
+                        src={message.image_url}
+                        alt="ภาพที่ส่งในแชท"
+                        width={480}
+                        height={360}
+                        className="block w-full cursor-zoom-in rounded-[10px]"
+                      />
+                    </div>
+                  ) : (
+                    <p className="m-0 text-[0.8rem] leading-[1.45] whitespace-pre-wrap break-words">
+                      {message.message_text}
+                      {message.edited_at && <small className="text-[0.58rem] opacity-75"> (แก้ไขแล้ว)</small>}
+                    </p>
+                  )}
+                  <div className="flex items-center justify-end gap-1 self-end text-[0.58rem] opacity-85 tabular-nums">
+                    <span>{new Date(message.created_at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น.</span>
+                    {mine && <CheckCheck size={13} className="text-white" />}
+                  </div>
+                </div>
+                {mine && activeMessageMenu === message.id && (
+                  <div className="chat-message-actions">
+                    <button
+                      type="button"
+                      className="grid h-7 w-7 place-items-center rounded-full bg-white text-pink-700 shadow-[0_1px_5px_rgba(15,23,42,0.12)] hover:bg-pink-100 hover:text-pink-800"
+                      title="แก้ไขข้อความ"
+                      aria-label="แก้ไขข้อความ"
+                      onClick={() => { startEdit(message); closeMessageActions(); }}
+                    >
+                      <Pencil size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      className="grid h-7 w-7 place-items-center rounded-full bg-white text-pink-700 shadow-[0_1px_5px_rgba(15,23,42,0.12)] hover:bg-pink-100 hover:text-pink-800"
+                      title="ซ่อนข้อความจากหน้าจอนี้"
+                      aria-label="ซ่อนข้อความ"
+                      onClick={() => { hideMessage(message); closeMessageActions(); }}
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </SkeletonReveal>
+        <div ref={endRef} />
+      </div>
+
+      {showScrollToLatest && (
+        <button
+          type="button"
+          className="fixed bottom-28 left-1/2 z-[6] grid h-[42px] w-[42px] -translate-x-1/2 place-items-center rounded-full border border-spu-pink-border bg-white/96 text-pink-700 shadow-[0_4px_14px_rgba(190,24,93,0.18)] hover:bg-spu-pink-light animate-[chat-scroll-latest-pop_180ms_ease-out_both]"
+          onClick={scrollToLatest}
+          aria-label="เลื่อนไปยังข้อความล่าสุด"
+          title="ข้อความล่าสุด"
+        >
+          <ArrowDown size={20} />
+        </button>
+      )}
+
+      {error && (
+        <p className="mx-auto w-full max-w-4xl bg-rose-50 px-3.5 py-2 text-[0.72rem] text-rose-700 sm:px-6" role="alert">
+          {error}
+        </p>
+      )}
+
+      <form className="w-full shrink-0 border-t border-pink-100 bg-white" onSubmit={handleSubmit}>
+        <div className="mx-auto flex w-full max-w-4xl flex-wrap items-center gap-2 px-3 pt-2 pb-[max(10px,env(safe-area-inset-bottom))] sm:px-6">
+          <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={(event) => { chooseImage(event.target.files?.[0]); event.target.value = ''; }} />
+          {(replyTarget || editingMessage || imagePreview) && (
+            <div className="flex w-full min-w-0 flex-[1_0_100%] items-center gap-2.5 rounded-xl border border-spu-pink-border bg-[#fff7fb] px-2.5 py-1.5">
+              {imagePreview && <img src={imagePreview} alt="ตัวอย่างภาพก่อนส่ง" className="h-[54px] w-[54px] shrink-0 rounded-lg object-cover" />}
+              {(replyTarget || editingMessage) && (
+                <div className="grid min-w-0 flex-1 gap-0.5">
+                  <strong className="truncate text-[0.65rem] text-pink-800">
+                    {editingMessage ? 'กำลังแก้ไขข้อความ' : `ตอบกลับ ${replyTarget.sender_id === currentUser?.id ? 'ข้อความของคุณ' : partner?.name || 'คู่สนทนา'}`}
+                  </strong>
+                  {editingMessage ? (
+                    <span className="truncate text-[0.65rem] text-slate-500">{text}</span>
+                  ) : replyTarget.message_type === 'image' ? (
+                    <span className="flex items-center gap-1.5">
+                      <img src={replyTarget.image_url} alt="รูปภาพที่ตอบกลับ" loading="lazy" className="h-[38px] w-[38px] shrink-0 rounded-[7px] object-cover" />
+                      <span className="text-[0.65rem] text-slate-500">รูปภาพ</span>
+                    </span>
+                  ) : (
+                    <span className="truncate text-[0.65rem] text-slate-500">{replyTarget.message_text}</span>
+                  )}
+                </div>
+              )}
+              {(imagePreview || replyTarget || editingMessage) && (
+                <button
+                  type="button"
+                  className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-pink-100 text-pink-700 hover:bg-pink-200"
+                  aria-label={editingMessage ? 'ยกเลิกการแก้ไข' : 'ปิดตัวอย่าง'}
+                  onClick={() => { if (imagePreview) setSelectedImage(null); if (editingMessage) cancelEdit(); else if (replyTarget) cancelReply(); }}
+                >
+                  <X size={17} />
+                </button>
+              )}
+            </div>
+          )}
+          <button
+            type="button"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-pink-100 text-pink-700 transition-colors hover:bg-pink-200 disabled:opacity-50"
+            aria-label="แนบรูปภาพ"
+            disabled={sending}
+            onClick={() => fileRef.current?.click()}
+          >
+            <ImagePlus size={19} />
+          </button>
+          <div className="flex min-w-0 flex-1 items-center gap-2 rounded-[20px] border border-spu-pink-border bg-[#fff7fb] px-3 py-1.5 transition-all focus-within:border-spu-pink focus-within:bg-white focus-within:ring-2 focus-within:ring-spu-pink/15">
+            <input
+              className="min-w-0 flex-1 border-0 bg-transparent text-[0.8rem] text-slate-900 outline-none focus:outline-none placeholder:text-slate-400"
+              value={text}
+              onChange={(event) => setText(event.target.value)}
+              placeholder="พิมพ์ข้อความ..."
+              aria-label="ข้อความ"
+            />
+          </div>
+          <button
+            type="submit"
+            className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-full bg-spu-pink text-white shadow-[0_3px_10px_rgba(230,0,126,0.35)] transition-transform hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
+            aria-label={editingMessage ? 'บันทึกการแก้ไข' : 'ส่งข้อความ'}
+            disabled={sending || (!text.trim() && !selectedImage)}
+          >
+            <Send size={17} />
+          </button>
+        </div>
+      </form>
+
+      {showScheduleModal && roomAppointment && (
+        <div className="pickup-schedule-backdrop" role="presentation" onClick={() => !appointmentBusy && setShowScheduleModal(false)}>
+          <form className="pickup-schedule-dialog" role="dialog" aria-modal="true" aria-labelledby="chat-pickup-schedule-title" onSubmit={submitScheduleUpdate} onClick={(event) => event.stopPropagation()}>
+            <h2 id="chat-pickup-schedule-title">เลือกวันที่และเวลานัดรับ</h2>
+            <DateTimePicker value={scheduledDateTime} onChange={setScheduledDateTime} minDate={scheduleLimits.minDate} minTime={scheduleLimits.minTime} maxTime="18:00" disabled={appointmentBusy} />
+            {scheduleError && <div className="pickup-schedule-error" role="alert">{scheduleError}</div>}
+            <div className="pickup-schedule-actions">
+              <button type="button" onClick={() => setShowScheduleModal(false)} disabled={appointmentBusy}>ยกเลิก</button>
+              <button type="submit" disabled={appointmentBusy}>{appointmentBusy ? 'กำลังบันทึก...' : 'ยืนยันนัดรับ'}</button>
+            </div>
+          </form>
+        </div>
+      )}
+      {showAppointmentModal && appointmentDetail && (
+        <AppointmentDetailModal
+          appointment={appointmentDetail}
+          currentUser={currentUser}
+          onClose={() => setShowAppointmentModal(false)}
+          onOpenChat={() => setShowAppointmentModal(false)}
+          onUpdateStatus={handleUpdateAppointmentStatus}
+        />
+      )}
+    </div>
+  );
 }

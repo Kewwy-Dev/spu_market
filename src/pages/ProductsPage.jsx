@@ -187,119 +187,159 @@ export default function ProductsPage({
   };
 
   return (
-    <div className="products-page">
-      <header className="products-page-header">
-        <div className="products-header-left">
-          <button type="button" className="chat-list-back-btn" aria-label="ย้อนกลับ" onClick={onBack}>
-            <ArrowLeft size={20} />
+    <div className="min-h-dvh w-full bg-slate-50">
+      <header className="sticky top-0 z-[35] w-full border-b border-slate-100 bg-white/95 backdrop-blur-sm">
+        <div className="mx-auto flex min-h-14 w-full max-w-7xl items-center justify-between gap-2.5 px-4 sm:px-6">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <button
+              type="button"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-700 transition-colors hover:bg-slate-100 hover:text-spu-pink"
+              aria-label="ย้อนกลับ"
+              onClick={onBack}
+            >
+              <ArrowLeft size={20} />
+            </button>
+            <h1 className="m-0 truncate text-base sm:text-lg font-bold text-slate-900">สินค้าทั้งหมด</h1>
+          </div>
+          <button
+            type="button"
+            className={`grid h-9 w-9 shrink-0 place-items-center rounded-full transition-colors ${
+              filterOpen ? 'bg-spu-pink-light text-spu-pink' : 'text-slate-700 hover:bg-slate-100'
+            }`}
+            aria-label="กรองสินค้า"
+            aria-expanded={filterOpen}
+            onClick={() => setFilterOpen((open) => !open)}
+          >
+            <SlidersHorizontal size={19} />
           </button>
-          <h1>สินค้าทั้งหมด</h1>
         </div>
-        <button
-          type="button"
-          className={`products-header-icon ${filterOpen ? 'selected' : ''}`}
-          aria-label="กรองสินค้า"
-          aria-expanded={filterOpen}
-          onClick={() => setFilterOpen((open) => !open)}
-        >
-          <SlidersHorizontal size={19} />
-        </button>
       </header>
 
       <SearchBar searchQuery={searchQuery} onSearchChange={setSearchQuery} />
 
       {filterOpen && (
-        <section className="products-filter-panel">
-          <div className="products-filter-group">
-            <h2 className="category-heading"><LayoutGrid size={15} /> หมวดหมู่สินค้า</h2>
-            <div className="products-category-scroll" aria-label="เลือกหมวดหมู่สินค้า" ref={scrollRef} onScroll={updateScrollState}>
-              {allCategories.map((item) => {
-                const itemKey = item.slug || item.id;
-                return (
-                  <button
-                    type="button"
-                    key={itemKey}
-                    className={category === itemKey ? 'selected' : ''}
-                    onClick={() => setCategory(itemKey)}
-                  >
-                    {cleanCategoryName(item.name || item.category_name)}
-                  </button>
-                );
-              })}
+        <section className="w-full border-b border-slate-200 bg-white shadow-[0_4px_12px_rgba(15,23,42,0.04)]">
+          <div className="mx-auto flex w-full max-w-7xl flex-col gap-2.5 px-3.5 pt-3 pb-2.5 sm:px-6">
+            <div className="flex flex-col gap-1">
+              <h2 className="m-0 flex items-center gap-1.5 text-[0.78rem] font-bold text-pink-900">
+                <LayoutGrid size={15} className="text-spu-pink" /> หมวดหมู่สินค้า
+              </h2>
+              <div
+                className="scrollbar-none -mx-3.5 flex gap-[7px] overflow-x-auto px-3.5 pb-[3px] sm:mx-0 sm:px-0"
+                aria-label="เลือกหมวดหมู่สินค้า"
+                ref={scrollRef}
+                onScroll={updateScrollState}
+              >
+                {allCategories.map((item) => {
+                  const itemKey = item.slug || item.id;
+                  const selected = category === itemKey;
+                  return (
+                    <button
+                      type="button"
+                      key={itemKey}
+                      className={`shrink-0 max-w-[220px] truncate rounded-full border px-3 py-1.5 text-[0.7rem] font-semibold transition-all duration-200 ${
+                        selected
+                          ? 'border-spu-pink bg-spu-pink text-white shadow-[0_2px_8px_rgba(230,0,126,0.2)]'
+                          : 'border-pink-100 bg-white text-slate-600 hover:border-spu-pink-border hover:bg-[#fff5f9]'
+                      }`}
+                      onClick={() => setCategory(itemKey)}
+                    >
+                      {cleanCategoryName(item.name || item.category_name)}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {isScrollable && (
+                <div className="mt-0.5 mb-0.5 flex justify-center gap-[5px]" role="tablist" aria-label="ตัวบอกตำแหน่งการเลื่อนหมวดหมู่">
+                  {[0, 1, 2].map((index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      role="tab"
+                      aria-selected={activeDot === index}
+                      aria-label={`เลื่อนหมวดหมู่ไปตำแหน่งที่ ${index + 1}`}
+                      className={`h-1.5 cursor-pointer rounded-full border-0 p-0 transition-all duration-300 ${
+                        activeDot === index ? 'w-[18px] bg-spu-pink' : 'w-1.5 bg-[rgba(209,14,120,0.2)]'
+                      }`}
+                      onClick={() => scrollToDot(index)}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
 
-            {isScrollable && (
-              <div className="slider-dots-container products-category-dots" role="tablist" aria-label="ตัวบอกตำแหน่งการเลื่อนหมวดหมู่">
-                {[0, 1, 2].map((index) => (
-                  <button
-                    key={index}
-                    type="button"
-                    role="tab"
-                    aria-selected={activeDot === index}
-                    aria-label={`เลื่อนหมวดหมู่ไปตำแหน่งที่ ${index + 1}`}
-                    className={`slider-dot ${activeDot === index ? 'active' : ''}`}
-                    onClick={() => scrollToDot(index)}
-                  />
-                ))}
+            <div className="flex flex-col gap-1">
+              <h2 className="m-0 flex items-center gap-1.5 text-[0.78rem] font-bold text-purple-950">
+                <MapPin size={15} className="text-purple-600" /> จุดนัดรับ (Pickup Location)
+              </h2>
+              <div
+                className="scrollbar-none -mx-3.5 flex flex-nowrap gap-[7px] overflow-x-auto px-3.5 pb-[3px] sm:mx-0 sm:px-0"
+                ref={locationScrollRef}
+                onScroll={updateLocationScrollState}
+              >
+                {allLocations.map((item) => {
+                  const itemKey = item.slug || item.id;
+                  const selected = location === itemKey;
+                  return (
+                    <button
+                      type="button"
+                      key={itemKey}
+                      className={`shrink-0 whitespace-nowrap rounded-full border px-3 py-1.5 text-[0.7rem] font-semibold transition-all duration-200 ${
+                        selected
+                          ? 'border-spu-pink bg-spu-pink text-white shadow-[0_2px_8px_rgba(230,0,126,0.2)]'
+                          : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
+                      }`}
+                      onClick={() => setLocation(itemKey)}
+                    >
+                      {item.name}
+                    </button>
+                  );
+                })}
               </div>
-            )}
-          </div>
 
-          <div className="products-filter-group">
-            <h2 className="location-heading"><MapPin size={15} /> จุดนัดรับ (Pickup Location)</h2>
-            <div className="products-filter-options" ref={locationScrollRef} onScroll={updateLocationScrollState}>
-              {allLocations.map((item) => {
-                const itemKey = item.slug || item.id;
-                return (
-                  <button
-                    type="button"
-                    key={itemKey}
-                    className={location === itemKey ? 'selected' : ''}
-                    onClick={() => setLocation(itemKey)}
-                  >
-                    {item.name}
-                  </button>
-                );
-              })}
+              {isLocationScrollable && (
+                <div className="mt-0.5 mb-0.5 flex justify-center gap-[5px]" role="tablist" aria-label="ตัวบอกตำแหน่งการเลื่อนจุดนัดรับ">
+                  {[0, 1, 2].map((index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      role="tab"
+                      aria-selected={activeLocationDot === index}
+                      aria-label={`เลื่อนจุดนัดรับไปตำแหน่งที่ ${index + 1}`}
+                      className={`h-1.5 cursor-pointer rounded-full border-0 p-0 transition-all duration-300 ${
+                        activeLocationDot === index ? 'w-[18px] bg-purple-600' : 'w-1.5 bg-purple-600/20'
+                      }`}
+                      onClick={() => scrollToLocationDot(index)}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
-
-            {isLocationScrollable && (
-              <div className="slider-dots-container products-location-dots" role="tablist" aria-label="ตัวบอกตำแหน่งการเลื่อนจุดนัดรับ">
-                {[0, 1, 2].map((index) => (
-                  <button
-                    key={index}
-                    type="button"
-                    role="tab"
-                    aria-selected={activeLocationDot === index}
-                    aria-label={`เลื่อนจุดนัดรับไปตำแหน่งที่ ${index + 1}`}
-                    className={`slider-dot ${activeLocationDot === index ? 'active' : ''}`}
-                    onClick={() => scrollToLocationDot(index)}
-                  />
-                ))}
-              </div>
-            )}
           </div>
         </section>
       )}
 
-      <main className="products-page-content">
-        <p className="products-result-count">พบสินค้า {visibleProducts.length} รายการ · เรียงจากลงขายล่าสุด</p>
+      <div className="mx-auto w-full max-w-7xl px-3.5 pt-3 pb-16 sm:px-6">
+        <p className="mb-2.5 text-[0.7rem] sm:text-xs text-slate-500">
+          พบสินค้า {visibleProducts.length} รายการ · เรียงจากลงขายล่าสุด
+        </p>
 
         <SkeletonReveal loading={isLoading} skeleton={<ProductGridSkeleton />}>
           {visibleProducts.length ? (
-            <div className="products-two-col-grid">
+            <div className="grid w-full min-w-0 grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3.5 lg:grid-cols-4 lg:gap-4">
               {visibleProducts.map((product) => (
                 <ProductCard key={product.id} product={product} onSelectProduct={onSelectProduct} />
               ))}
             </div>
           ) : (
-            <div className="products-empty-state">
-              <p>ไม่พบสินค้าในหมวดหมู่นี้</p>
-              <span>ลองเปลี่ยนหมวดหมู่หรือจุดนัดรับ</span>
+            <div className="rounded-[14px] border border-dashed border-slate-300 bg-white px-4 py-9 text-center">
+              <p className="mb-1 text-[0.88rem] font-bold text-slate-700">ไม่พบสินค้าในหมวดหมู่นี้</p>
+              <span className="text-[0.74rem] text-slate-500">ลองเปลี่ยนหมวดหมู่หรือจุดนัดรับ</span>
             </div>
           )}
         </SkeletonReveal>
-      </main>
+      </div>
     </div>
   );
 }

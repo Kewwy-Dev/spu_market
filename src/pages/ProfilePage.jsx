@@ -484,336 +484,394 @@ export default function ProfilePage({
     : null;
 
   return (
-    <div className="profile-page-container">
+    <div className="min-h-[calc(100dvh-64px)] w-full bg-slate-50 pb-24">
       {/* 1. Header */}
-      <header className="profile-top-header">
-        <div className="profile-header-title">
-          <button
-            type="button"
-            className="chat-list-back-btn"
-            onClick={onBackToHome}
-            aria-label="ย้อนกลับ"
-            title="กลับหน้าแรก"
-          >
-            <ArrowLeft size={20} />
-          </button>
-          <h1>โปรไฟล์ของฉัน</h1>
-        </div>
+      <header className="sticky top-0 z-30 w-full border-b border-slate-100 bg-white/95 backdrop-blur-sm">
+        <div className="mx-auto flex min-h-14 w-full max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
+          <div className="flex min-w-0 flex-1 items-center gap-2.5">
+            <button
+              type="button"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900"
+              onClick={onBackToHome}
+              aria-label="ย้อนกลับ"
+              title="กลับหน้าแรก"
+            >
+              <ArrowLeft size={19} />
+            </button>
+            <h1 className="truncate text-base font-bold tracking-tight text-slate-900 sm:text-lg">
+              โปรไฟล์ของฉัน
+            </h1>
+          </div>
 
-        <div className="profile-header-actions">
-          <button
-            type="button"
-            className="profile-action-btn"
-            title="ตั้งค่าโปรไฟล์"
-            aria-label="ตั้งค่าโปรไฟล์"
-            onClick={openSettingsModal}
-          >
-            <Settings size={19} />
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-800"
+              title="ตั้งค่าโปรไฟล์"
+              aria-label="ตั้งค่าโปรไฟล์"
+              onClick={openSettingsModal}
+            >
+              <Settings size={18} />
+            </button>
+          </div>
         </div>
       </header>
 
-      {/* 2. Login Prompt if guest, else Profile Card */}
-      {!currentUser ? (
-        <div className="profile-guest-card">
-          <div className="guest-card-icon">
-            <LogIn size={28} />
-          </div>
-          <h3>เข้าสู่ระบบ SPU Market</h3>
-          <p>เข้าสู่ระบบด้วยอีเมล @spumail.net หรือ Google เพื่อดูรายการนัดรับและจัดการร้านค้า</p>
-          <button
-            type="button"
-            className="profile-login-cta-btn"
-            onClick={onNavigateToLogin}
-          >
-            <LogIn size={16} />
-            <span>เข้าสู่ระบบตอนนี้</span>
-          </button>
-        </div>
-      ) : (
-        <>
-          {/* Seller Promo Banner (ซ่อนสำหรับผู้ที่มีบทบาท Seller) */}
-          {currentUser?.role?.toLowerCase() !== 'seller' && (
-            <div className="profile-seller-banner" onClick={onSwitchToSeller}>
-              <div className="seller-banner-icon-box">
-                <Store size={22} />
+      <div className="mx-auto grid w-full max-w-7xl grid-cols-1 items-start gap-4 px-4 pt-4 sm:px-6 lg:grid-cols-12 lg:gap-5">
+        <div className="flex min-w-0 flex-col gap-3.5 lg:col-span-5 lg:col-start-1 lg:row-start-1">
+          {/* 2. Login Prompt if guest, else Profile Card */}
+          {!currentUser ? (
+            <div className="rounded-2xl border border-pink-200 bg-gradient-to-br from-white to-pink-50 px-5 py-6 text-center shadow-[0_4px_16px_rgba(219,39,119,0.06)]">
+              <div className="mx-auto mb-3 grid h-13 w-13 place-items-center rounded-2xl bg-pink-100 text-pink-600">
+                <LogIn size={26} />
               </div>
-              <div className="seller-banner-info">
-                <h3>เปิดหน้าร้านบน SPU ฟรี</h3>
-              </div>
-              <button type="button" className="seller-banner-btn">
-                <span>เปิดโหมดขาย</span>
-                <ChevronRight size={14} strokeWidth={2.5} />
+              <h3 className="m-0 mb-1.5 text-base font-extrabold text-slate-900 sm:text-lg">
+                เข้าสู่ระบบ SPU Market
+              </h3>
+              <p className="m-0 mb-4 text-xs leading-relaxed text-slate-500 sm:text-sm">
+                เข้าสู่ระบบด้วยอีเมล @spumail.net หรือ Google เพื่อดูรายการนัดรับและจัดการร้านค้า
+              </p>
+              <button
+                type="button"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#a20857] to-[#ec008c] px-6 text-sm font-extrabold text-white shadow-[0_4px_14px_rgba(236,0,140,0.3)] transition-opacity hover:opacity-95"
+                onClick={onNavigateToLogin}
+              >
+                <LogIn size={16} />
+                <span>เข้าสู่ระบบตอนนี้</span>
               </button>
             </div>
-          )}
-
-          {/* Main Profile Card */}
-          <div className="profile-main-card">
-            <div className="profile-user-header">
-              <div className="profile-avatar-container">
-                <img
-                  src={user.avatar}
-                  alt={user.displayName}
-                  className="profile-avatar-img"
-                />
-                {user.verified && (
-                  <span className="profile-avatar-badge" title="SPU Verified Student">
-                    <CheckCircle2 size={14} className="profile-verified-icon" />
-                  </span>
-                )}
-              </div>
-
-              <div className="profile-user-details">
-                <div className="profile-name-row">
-                  <h2 className="profile-name">{user.displayName}</h2>
-                  {user.nickname && <span className="profile-nickname">({user.nickname})</span>}
-                </div>
-
-                <div className="profile-meta-row">  
-                  <span>
-                    รหัสนักศึกษา {user.studentId} • {user.faculty}{user.major ? ` สาขา • ${user.major}` : ''}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* 3. Appointments Activities Section */}
-      <section className="profile-section-card">
-        <div className="profile-section-header">
-          <div className="profile-section-title">
-            <ShoppingBag size={18} className="profile-section-icon" />
-            <h3>กิจกรรมการนัดรับของฉัน</h3>
-          </div>
-          <button
-            type="button"
-            className="profile-link-btn"
-            onClick={() => setActiveActivityTab('all')}
-          >
-            <span>ทั้งหมด ({buyerActivities.length})</span>
-            <ChevronRight size={13} />
-          </button>
-        </div>
-
-        <div className="profile-activity-tabs">
-          <button
-            type="button"
-            className={`activity-tab-btn ${activeActivityTab === 'pending' ? 'active' : ''}`}
-            onClick={() => setActiveActivityTab('pending')}
-          >
-            <Clock size={13} />
-            <span>กำลังนัดรับ ({buyerActivityCounts.pending})</span>
-          </button>
-          <button
-            type="button"
-            className={`activity-tab-btn ${activeActivityTab === 'success' ? 'active' : ''}`}
-            onClick={() => setActiveActivityTab('success')}
-          >
-            <CheckCircle2 size={13} />
-            <span>สำเร็จแล้ว ({buyerActivityCounts.success})</span>
-          </button>
-          <button
-            type="button"
-            className={`activity-tab-btn ${activeActivityTab === 'cancelled' ? 'active' : ''}`}
-            onClick={() => setActiveActivityTab('cancelled')}
-          >
-            <span>ยกเลิก ({buyerActivityCounts.cancelled})</span>
-          </button>
-        </div>
-
-        {activitiesError && (
-          <p className="profile-activity-message error" role="alert">
-            {activitiesError}
-          </p>
-        )}
-
-        {activitiesLoading ? (
-          <p className="profile-activity-message" role="status">
-            กำลังโหลดรายการนัดรับ...
-          </p>
-        ) : !currentUser ? (
-          <p className="profile-activity-message" role="status">
-            เข้าสู่ระบบเพื่อดูรายการนัดรับสินค้าของคุณ
-          </p>
-        ) : visibleActivities.length ? (
-          <div className="profile-activity-list">
-            {visibleActivities.map((item) => {
-              const scheduledLabel = new Intl.DateTimeFormat('th-TH', {
-                timeZone: 'Asia/Bangkok',
-                weekday: 'short',
-                day: 'numeric',
-                month: 'short',
-                hour: '2-digit',
-                minute: '2-digit',
-                hourCycle: 'h23',
-              }).format(new Date(item.scheduledAt));
-
-              const statusLabel =
-                item.status === 'pending'
-                  ? `นัดรับ ${scheduledLabel} น.`
-                  : item.status === 'delivered'
-                  ? `ผู้ขายส่งมอบแล้ว · รอยืนยัน`
-                  : item.status === 'completed'
-                  ? `รับสินค้าแล้ว · ${scheduledLabel}`
-                  : `ยกเลิก · ${scheduledLabel}`;
-
-              const badgeType =
-                item.status === 'pending'
-                  ? 'amber'
-                  : item.status === 'delivered'
-                  ? 'blue'
-                  : item.status === 'completed'
-                  ? 'green'
-                  : 'red';
-
-              return (
+          ) : (
+            <>
+              {/* Seller Promo Banner (ซ่อนสำหรับผู้ที่มีบทบาท Seller) */}
+              {currentUser?.role?.toLowerCase() !== 'seller' && (
                 <div
-                  key={item.id}
-                  className="profile-activity-card interactive"
-                  onClick={() => setSelectedAppointment(item)}
-                  title="แตะเพื่อดูรายละเอียดและดำเนินการ"
+                  className="flex cursor-pointer items-center gap-3 rounded-2xl bg-gradient-to-br from-[#e6007e] to-[#be185d] p-3.5 text-white shadow-[0_4px_14px_rgba(230,0,126,0.25)] transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_18px_rgba(230,0,126,0.32)]"
+                  onClick={onSwitchToSeller}
                 >
-                  <div className="activity-top-row">
-                    <span className={`activity-role-tag ${item.isBuyer ? 'buyer' : 'seller'}`}>
-                      {item.isBuyer ? <ShoppingBag size={12} /> : <Store size={12} />}
-                      <span>{item.isBuyer ? 'คุณเป็นผู้ซื้อ' : 'คุณเป็นผู้ขาย'}</span>
-                    </span>
-                    <span className={`activity-time-pill pill-${badgeType}`}>
-                      {statusLabel}
-                    </span>
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/20 backdrop-blur-xs">
+                    <Store size={21} />
                   </div>
-                  <div className="activity-card-main">
-                    {item.image ? (
-                      <img src={item.image} alt={item.title} className="activity-thumb" />
-                    ) : (
-                      <div className="activity-thumb activity-thumb-placeholder">
-                        <ShoppingBag size={20} />
-                      </div>
-                    )}
-                    <div className="activity-card-body">
-                      <h4 className="activity-title">{item.title}</h4>
-                      <span className="activity-price">฿{item.price.toLocaleString()}</span>
-                      <div className="activity-location-row">
-                        <MapPin size={12} className="activity-pin-icon" />
-                        <span>จุดนัดรับ: {item.location}</span>
-                      </div>
-                      <span className="activity-partner-hint">
-                        {item.isBuyer ? `ผู้ขาย: ${item.sellerName}` : `ผู้ซื้อ: ${item.buyerName}`}
+                  <div className="min-w-0 flex-1">
+                    <h3 className="m-0 text-sm font-bold leading-snug">เปิดหน้าร้านบน SPU ฟรี</h3>
+                  </div>
+                  <button
+                    type="button"
+                    className="flex shrink-0 items-center gap-0.5 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-[#e6007e]"
+                  >
+                    <span>เปิดโหมดขาย</span>
+                    <ChevronRight size={14} strokeWidth={2.5} />
+                  </button>
+                </div>
+              )}
+
+              {/* Main Profile Card */}
+              <div className="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_4px_16px_rgba(0,0,0,0.04)]">
+                <div className="flex items-center gap-3.5">
+                  <div className="relative h-14 w-14 shrink-0">
+                    <img
+                      src={user.avatar}
+                      alt={user.displayName}
+                      className="h-full w-full rounded-full border-2 border-white object-cover shadow-sm"
+                    />
+                    {user.verified && (
+                      <span
+                        className="absolute right-0 bottom-0 flex h-4.5 w-4.5 items-center justify-center rounded-full border-2 border-white bg-emerald-500 text-white"
+                        title="SPU Verified Student"
+                      >
+                        <CheckCircle2 size={12} />
                       </span>
+                    )}
+                  </div>
+
+                  <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <div className="flex flex-wrap items-baseline gap-1.5">
+                      <h2 className="m-0 truncate text-base font-extrabold text-slate-900">
+                        {user.displayName}
+                      </h2>
+                      {user.nickname && (
+                        <span className="text-xs font-semibold text-slate-500">({user.nickname})</span>
+                      )}
+                    </div>
+
+                    <div className="mt-0.5 flex flex-col gap-0.5 text-xs leading-snug text-slate-500">
+                      <span className="font-medium text-slate-600">
+                        รหัสนักศึกษา {user.studentId}
+                      </span>
+                      <span>{String(user.faculty || '').replace(/^คณะ(?!\s)/, 'คณะ ')}</span>
+                      {user.major && <span>สาขา {user.major}</span>}
                     </div>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        ) : (
-          <p className="profile-activity-message" role="status">
-            {activeActivityTab === 'all'
-              ? 'ยังไม่มีรายการนัดรับสินค้า'
-              : 'ไม่มีรายการในสถานะนี้'}
-          </p>
-        )}
-      </section>
+              </div>
+            </>
+          )}
+        </div>
 
-      {/* 4. Settings & Navigation Menu List */}
-      <div className="profile-menu-list">
-        <button
-          type="button"
-          className="profile-menu-item"
-          onClick={handleOpenFavorites}
-        >
-          <div className="menu-item-left">
-            <div className="menu-icon-box pink-box">
-              <Heart size={17} fill="currentColor" />
+        {/* 3. Appointments Activities Section */}
+        <section className="flex min-w-0 flex-col gap-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_4px_16px_rgba(0,0,0,0.04)] lg:col-span-7 lg:col-start-6 lg:row-start-1 lg:row-span-2">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <ShoppingBag size={18} className="text-[#e6007e]" />
+              <h3 className="m-0 text-sm font-extrabold text-slate-900 sm:text-base">
+                กิจกรรมการนัดรับของฉัน
+              </h3>
             </div>
-            <div className="menu-item-text">
-              <h4>สินค้าที่ถูกใจ</h4>
-            </div>
+            <button
+              type="button"
+              className="inline-flex items-center gap-0.5 text-xs font-bold text-[#e6007e] hover:underline"
+              onClick={() => setActiveActivityTab('all')}
+            >
+              <span>ทั้งหมด ({buyerActivities.length})</span>
+              <ChevronRight size={14} />
+            </button>
           </div>
-          <div className="menu-item-right">
-            {favoritesCount > 0 && <span className="menu-badge-count">{favoritesCount}</span>}
-            <ChevronRight size={15} />
-          </div>
-        </button>
 
-        <button
-          type="button"
-          className="profile-menu-item"
-          onClick={() => setShowPickupHistory(true)}
-        >
-          <div className="menu-item-left">
-            <div className="menu-icon-box teal-box">
-              <Truck size={17} />
-            </div>
-            <div className="menu-item-text">
-              <h4>ประวัติการนัดรับสินค้า</h4>
-            </div>
+          <div className="flex flex-wrap items-center gap-1.5 border-b border-slate-100 pb-2.5">
+            <button
+              type="button"
+              className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold transition-all ${
+                activeActivityTab === 'pending'
+                  ? 'bg-[#e6007e] font-bold text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+              onClick={() => setActiveActivityTab('pending')}
+            >
+              <Clock size={13} />
+              <span>กำลังนัดรับ ({buyerActivityCounts.pending})</span>
+            </button>
+            <button
+              type="button"
+              className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold transition-all ${
+                activeActivityTab === 'success'
+                  ? 'bg-[#e6007e] font-bold text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+              onClick={() => setActiveActivityTab('success')}
+            >
+              <CheckCircle2 size={13} />
+              <span>สำเร็จแล้ว ({buyerActivityCounts.success})</span>
+            </button>
+            <button
+              type="button"
+              className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold transition-all ${
+                activeActivityTab === 'cancelled'
+                  ? 'bg-[#e6007e] font-bold text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+              onClick={() => setActiveActivityTab('cancelled')}
+            >
+              <span>ยกเลิก ({buyerActivityCounts.cancelled})</span>
+            </button>
           </div>
-          <div className="menu-item-right">
-            {hasPendingActivities && <span className="menu-unread-dot" />}
-            <ChevronRight size={15} />
-          </div>
-        </button>
 
-        <button
-          type="button"
-          className="profile-menu-item"
-          onClick={() => setShowHelpModal(true)}
-        >
-          <div className="menu-item-left">
-            <div className="menu-icon-box teal-box">
-              <LifeBuoy size={17} />
-            </div>
-            <div className="menu-item-text">
-              <h4>ศูนย์ช่วยเหลือ &amp; แจ้งปัญหาการซื้อขาย</h4>
-            </div>
-          </div>
-          <div className="menu-item-right">
-            <ChevronRight size={15} />
-          </div>
-        </button>
+          {activitiesError && (
+            <p className="my-2 text-center text-xs font-medium text-red-700" role="alert">
+              {activitiesError}
+            </p>
+          )}
 
-        <button
-          type="button"
-          className="profile-menu-item"
-          onClick={() => setShowPrivacyPolicy(true)}
-        >
-          <div className="menu-item-left">
-            <div className="menu-icon-box slate-box">
-              <ShieldCheck size={17} />
-            </div>
-            <div className="menu-item-text">
-              <h4>นโยบายความเป็นส่วนตัว &amp; PDPA</h4>
-            </div>
-          </div>
-          <div className="menu-item-right">
-            <ChevronRight size={15} />
-          </div>
-        </button>
-      </div>
+          {activitiesLoading ? (
+            <p className="my-4 text-center text-xs text-slate-500" role="status">
+              กำลังโหลดรายการนัดรับ...
+            </p>
+          ) : !currentUser ? (
+            <p className="my-4 text-center text-xs text-slate-500" role="status">
+              เข้าสู่ระบบเพื่อดูรายการนัดรับสินค้าของคุณ
+            </p>
+          ) : visibleActivities.length ? (
+            <div className="scrollbar-none flex max-h-[430px] flex-col gap-2.5 overflow-y-auto">
+              {visibleActivities.map((item) => {
+                const scheduledLabel = new Intl.DateTimeFormat('th-TH', {
+                  timeZone: 'Asia/Bangkok',
+                  weekday: 'short',
+                  day: 'numeric',
+                  month: 'short',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hourCycle: 'h23',
+                }).format(new Date(item.scheduledAt));
 
-      {/* 5. Footer & Logout */}
-      {currentUser && (
-        <div className="profile-footer-section">
+                const statusLabel =
+                  item.status === 'pending'
+                    ? `นัดรับ ${scheduledLabel} น.`
+                    : item.status === 'delivered'
+                    ? `ผู้ขายส่งมอบแล้ว · รอยืนยัน`
+                    : item.status === 'completed'
+                    ? `รับสินค้าแล้ว · ${scheduledLabel}`
+                    : `ยกเลิก · ${scheduledLabel}`;
+
+                const pillClassMap = {
+                  pending: 'bg-amber-100 text-amber-800',
+                  delivered: 'border border-blue-200 bg-blue-50 text-blue-700',
+                  completed: 'bg-green-100 text-green-700',
+                  cancelled: 'bg-red-100 text-red-700',
+                };
+                const pillClass = pillClassMap[item.status] || pillClassMap.cancelled;
+
+                return (
+                  <div
+                    key={item.id}
+                    className="flex cursor-pointer flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 transition-all hover:border-pink-200 hover:bg-white hover:shadow-xs active:scale-[0.99]"
+                    onClick={() => setSelectedAppointment(item)}
+                    title="แตะเพื่อดูรายละเอียดและดำเนินการ"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-extrabold ${
+                          item.isBuyer
+                            ? 'border-blue-300 bg-blue-50 text-blue-700'
+                            : 'border-pink-300 bg-pink-50 text-pink-700'
+                        }`}
+                      >
+                        {item.isBuyer ? <ShoppingBag size={12} /> : <Store size={12} />}
+                        <span>{item.isBuyer ? 'คุณเป็นผู้ซื้อ' : 'คุณเป็นผู้ขาย'}</span>
+                      </span>
+                      <span className={`rounded-md px-2 py-0.5 text-[11px] font-bold ${pillClass}`}>
+                        {statusLabel}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {item.image ? (
+                        <img
+                          src={item.image}
+                          alt={item.title}
+                          className="h-14 w-14 shrink-0 rounded-xl object-cover"
+                        />
+                      ) : (
+                        <div className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-slate-200 text-slate-400">
+                          <ShoppingBag size={20} />
+                        </div>
+                      )}
+                      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                        <h4 className="m-0 truncate text-xs font-bold text-slate-800 sm:text-sm">
+                          {item.title}
+                        </h4>
+                        <span className="text-sm font-extrabold text-[#e6007e]">
+                          ฿{item.price.toLocaleString()}
+                        </span>
+                        <div className="flex items-center gap-1 text-[11px] text-slate-500">
+                          <MapPin size={12} className="shrink-0 text-[#e6007e]" />
+                          <span className="truncate">จุดนัดรับ: {item.location}</span>
+                        </div>
+                        <span className="text-[11px] text-slate-500">
+                          {item.isBuyer ? `ผู้ขาย: ${item.sellerName}` : `ผู้ซื้อ: ${item.buyerName}`}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="my-4 text-center text-xs text-slate-500" role="status">
+              {activeActivityTab === 'all'
+                ? 'ยังไม่มีรายการนัดรับสินค้า'
+                : 'ไม่มีรายการในสถานะนี้'}
+            </p>
+          )}
+        </section>
+
+        {/* 4. Settings & Navigation Menu List */}
+        <div className="grid grid-cols-1 overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-[0_4px_16px_rgba(0,0,0,0.04)] sm:grid-cols-2 lg:col-span-5 lg:col-start-1 lg:row-start-2 lg:grid-cols-1">
           <button
             type="button"
-            className="profile-logout-btn"
-            onClick={() => {
-              setLogoutError('');
-              setShowLogoutConfirm(true);
-            }}
+            className="flex w-full items-center justify-between border-b border-slate-50 px-4 py-3 text-left transition-colors hover:bg-slate-50 sm:border-r lg:border-r-0"
+            onClick={handleOpenFavorites}
           >
-            <LogOut size={16} />
-            <span>ออกจากระบบ</span>
+            <div className="flex flex-1 items-center gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-pink-50 text-pink-600">
+                <Heart size={17} fill="currentColor" />
+              </div>
+              <div>
+                <h4 className="m-0 text-sm font-bold text-slate-900">สินค้าที่ถูกใจ</h4>
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-1.5 text-slate-400">
+              {favoritesCount > 0 && (
+                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-pink-200 bg-pink-50 px-1.5 text-[11px] font-extrabold text-[#ec008c]">
+                  {favoritesCount}
+                </span>
+              )}
+              <ChevronRight size={16} />
+            </div>
           </button>
-          <p className="profile-version-text">
-            SPU Student Peer-to-Peer Market v2.4.0 (Build 2026)
-          </p>
+
+          <button
+            type="button"
+            className="flex w-full items-center justify-between border-b border-slate-50 px-4 py-3 text-left transition-colors hover:bg-slate-50"
+            onClick={() => setShowPickupHistory(true)}
+          >
+            <div className="flex flex-1 items-center gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-600">
+                <Truck size={17} />
+              </div>
+              <div>
+                <h4 className="m-0 text-sm font-bold text-slate-900">ประวัติการนัดรับสินค้า</h4>
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-1.5 text-slate-400">
+              {hasPendingActivities && <span className="h-2 w-2 rounded-full bg-[#e6007e]" />}
+              <ChevronRight size={16} />
+            </div>
+          </button>
+
+          <button
+            type="button"
+            className="flex w-full items-center justify-between border-b border-slate-50 px-4 py-3 text-left transition-colors hover:bg-slate-50 sm:border-b-0 sm:border-r lg:border-b lg:border-r-0"
+            onClick={() => setShowHelpModal(true)}
+          >
+            <div className="flex flex-1 items-center gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-600">
+                <LifeBuoy size={17} />
+              </div>
+              <div>
+                <h4 className="m-0 text-sm font-bold text-slate-900">ศูนย์ช่วยเหลือ &amp; แจ้งปัญหาการซื้อขาย</h4>
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-1.5 text-slate-400">
+              <ChevronRight size={16} />
+            </div>
+          </button>
+
+          <button
+            type="button"
+            className="flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-slate-50"
+            onClick={() => setShowPrivacyPolicy(true)}
+          >
+            <div className="flex flex-1 items-center gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
+                <ShieldCheck size={17} />
+              </div>
+              <div>
+                <h4 className="m-0 text-sm font-bold text-slate-900">นโยบายความเป็นส่วนตัว &amp; PDPA</h4>
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-1.5 text-slate-400">
+              <ChevronRight size={16} />
+            </div>
+          </button>
         </div>
-      )}
+
+        {/* 5. Footer & Logout */}
+        {currentUser && (
+          <div className="flex flex-col items-center gap-2.5 pt-2 pb-4 lg:col-span-12">
+            <button
+              type="button"
+              className="flex w-full max-w-xs items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-600 transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-600"
+              onClick={() => {
+                setLogoutError('');
+                setShowLogoutConfirm(true);
+              }}
+            >
+              <LogOut size={16} />
+              <span>ออกจากระบบ</span>
+            </button>
+            <p className="m-0 text-center text-[11px] text-slate-500">
+              SPU Student Peer-to-Peer Market v2.4.0 (Build 2026)
+            </p>
+          </div>
+        )}
+      </div>
 
       {/* Appointment Detail Modal (Bottom Sheet on Mobile) */}
       {selectedAppointment && (
@@ -859,27 +917,29 @@ export default function ProfilePage({
       {/* Logout Confirmation Modal */}
       {showLogoutConfirm && (
         <div
-          className="appointment-modal-backdrop"
+          className="fixed inset-0 z-[1000] flex items-end justify-center bg-slate-900/55 p-0 backdrop-blur-xs animate-[appointmentFadeIn_0.2s_ease] sm:items-center sm:p-4"
           onClick={() => {
             if (!isLoggingOut) setShowLogoutConfirm(false);
           }}
           role="presentation"
         >
           <div
-            className="profile-submodal-card logout-confirm-card"
+            className="flex w-full max-w-sm flex-col gap-4 rounded-t-3xl bg-white p-5 shadow-2xl animate-[appointmentPopIn_0.2s_ease] sm:rounded-2xl"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
             aria-labelledby="logout-confirm-title"
           >
-            <div className="submodal-header">
-              <div className="submodal-icon danger">
+            <div className="flex items-center gap-2.5">
+              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-red-50 text-red-600">
                 <LogOut size={20} />
               </div>
-              <h3 id="logout-confirm-title">ออกจากระบบ</h3>
+              <h3 id="logout-confirm-title" className="m-0 flex-1 text-base font-extrabold text-slate-900">
+                ออกจากระบบ
+              </h3>
               <button
                 type="button"
-                className="submodal-close"
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-slate-200 bg-slate-50 text-slate-500 transition-colors hover:bg-slate-100 disabled:opacity-50"
                 onClick={() => setShowLogoutConfirm(false)}
                 disabled={isLoggingOut}
                 aria-label="ปิดหน้าต่าง"
@@ -887,19 +947,24 @@ export default function ProfilePage({
                 <X size={18} />
               </button>
             </div>
-            <div className="submodal-body">
-              <p className="logout-confirm-message">คุณต้องการออกจากระบบใช่หรือไม่?</p>
+            <div className="flex flex-col gap-3 text-sm text-slate-600">
+              <p className="m-0 text-sm leading-relaxed text-slate-700">
+                คุณต้องการออกจากระบบใช่หรือไม่?
+              </p>
               {logoutError && (
-                <div className="settings-feedback error" role="alert">
+                <div
+                  className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700"
+                  role="alert"
+                >
                   <AlertCircle size={15} />
                   <span>{logoutError}</span>
                 </div>
               )}
             </div>
-            <div className="logout-confirm-actions">
+            <div className="grid grid-cols-2 gap-2.5">
               <button
                 type="button"
-                className="logout-cancel-btn"
+                className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
                 onClick={() => setShowLogoutConfirm(false)}
                 disabled={isLoggingOut}
               >
@@ -907,7 +972,7 @@ export default function ProfilePage({
               </button>
               <button
                 type="button"
-                className="logout-confirm-btn"
+                className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-red-600 text-sm font-bold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={isLoggingOut}
                 onClick={async () => {
                   setLogoutError('');
@@ -924,7 +989,7 @@ export default function ProfilePage({
               >
                 {isLoggingOut ? (
                   <>
-                    <Loader2 size={16} className="spin" />
+                    <Loader2 size={16} className="animate-spin" />
                     <span>กำลังออกจากระบบ...</span>
                   </>
                 ) : (
@@ -941,33 +1006,63 @@ export default function ProfilePage({
 
       {/* Help & Support Modal */}
       {showHelpModal && (
-        <div className="appointment-modal-backdrop" onClick={() => setShowHelpModal(false)} role="presentation">
-          <div className="profile-submodal-card" onClick={(e) => e.stopPropagation()} role="dialog">
-            <div className="submodal-header">
-              <div className="submodal-icon teal"><LifeBuoy size={20} /></div>
-              <h3>ศูนย์ช่วยเหลือ &amp; แจ้งปัญหา</h3>
-              <button type="button" className="submodal-close" onClick={() => setShowHelpModal(false)}>
+        <div
+          className="fixed inset-0 z-[1000] flex items-end justify-center bg-slate-900/55 p-0 backdrop-blur-xs animate-[appointmentFadeIn_0.2s_ease] sm:items-center sm:p-4"
+          onClick={() => setShowHelpModal(false)}
+          role="presentation"
+        >
+          <div
+            className="flex w-full max-w-md flex-col gap-4 rounded-t-3xl bg-white p-5 shadow-2xl animate-[appointmentPopIn_0.2s_ease] sm:rounded-2xl"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-teal-50 text-teal-600">
+                <LifeBuoy size={20} />
+              </div>
+              <h3 className="m-0 flex-1 text-base font-extrabold text-slate-900">
+                ศูนย์ช่วยเหลือ &amp; แจ้งปัญหา
+              </h3>
+              <button
+                type="button"
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-slate-200 bg-slate-50 text-slate-500 transition-colors hover:bg-slate-100"
+                onClick={() => setShowHelpModal(false)}
+              >
                 <X size={18} />
               </button>
             </div>
-            <div className="submodal-body">
-              <p>หากพบปัญหาในการซื้อขาย ไม่มาตามนัด หรือสินค้าไม่ตรงปก สามารถติดต่อผู้ดูแลตลาดได้ที่:</p>
-              <div className="help-contact-card">
-                <Phone size={16} />
+            <div className="flex flex-col gap-3 text-xs leading-relaxed text-slate-600">
+              <p className="m-0">
+                หากพบปัญหาในการซื้อขาย ไม่มาตามนัด หรือสินค้าไม่ตรงปก สามารถติดต่อผู้ดูแลตลาดได้ที่:
+              </p>
+              <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <Phone size={16} className="mt-0.5 shrink-0 text-teal-600" />
                 <div>
-                  <strong>โทรด่วนฝ่ายกิจการนักศึกษา</strong>
-                  <span>02-579-1111 ต่อ 1234 (เวลาทำการ 08:30 - 16:30 น.)</span>
+                  <strong className="block text-xs font-bold text-slate-900">
+                    โทรด่วนฝ่ายกิจการนักศึกษา
+                  </strong>
+                  <span className="mt-0.5 block text-[11px] text-slate-500">
+                    02-579-1111 ต่อ 1234 (เวลาทำการ 08:30 - 16:30 น.)
+                  </span>
                 </div>
               </div>
-              <div className="help-contact-card">
-                <MessageCircle size={16} />
+              <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <MessageCircle size={16} className="mt-0.5 shrink-0 text-teal-600" />
                 <div>
-                  <strong>LINE Official SPU Market</strong>
-                  <span>@spumarket (ตอบกลับภายใน 24 ชม.)</span>
+                  <strong className="block text-xs font-bold text-slate-900">
+                    LINE Official SPU Market
+                  </strong>
+                  <span className="mt-0.5 block text-[11px] text-slate-500">
+                    @spumarket (ตอบกลับภายใน 24 ชม.)
+                  </span>
                 </div>
               </div>
             </div>
-            <button type="button" className="submodal-done-btn" onClick={() => setShowHelpModal(false)}>
+            <button
+              type="button"
+              className="min-h-11 rounded-xl bg-slate-900 text-sm font-bold text-white transition-colors hover:bg-slate-800"
+              onClick={() => setShowHelpModal(false)}
+            >
               ปิดหน้าต่าง
             </button>
           </div>
@@ -976,20 +1071,28 @@ export default function ProfilePage({
 
       {/* Settings Modal */}
       {showSettingsModal && (
-        <div className="appointment-modal-backdrop" onClick={closeSettingsModal} role="presentation">
+        <div
+          className="fixed inset-0 z-[1000] flex items-end justify-center bg-slate-900/55 p-0 backdrop-blur-xs animate-[appointmentFadeIn_0.2s_ease] sm:items-center sm:p-4"
+          onClick={closeSettingsModal}
+          role="presentation"
+        >
           <div
-            className="profile-submodal-card profile-settings-modal-card"
+            className="flex max-h-[90vh] w-full max-w-md flex-col gap-4 overflow-y-auto rounded-t-3xl bg-white p-5 shadow-2xl animate-[appointmentPopIn_0.2s_ease] sm:rounded-2xl"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
             aria-labelledby="profile-settings-modal-title"
           >
-            <div className="submodal-header">
-              <div className="submodal-icon"><Settings size={20} /></div>
-              <h3 id="profile-settings-modal-title">ตั้งค่าโปรไฟล์</h3>
+            <div className="flex items-center gap-2.5">
+              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-slate-100 text-slate-600">
+                <Settings size={20} />
+              </div>
+              <h3 id="profile-settings-modal-title" className="m-0 flex-1 text-base font-extrabold text-slate-900">
+                ตั้งค่าโปรไฟล์
+              </h3>
               <button
                 type="button"
-                className="submodal-close"
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-slate-200 bg-slate-50 text-slate-500 transition-colors hover:bg-slate-100 disabled:opacity-50"
                 onClick={closeSettingsModal}
                 disabled={settingsSaving}
                 aria-label="ปิดหน้าต่าง"
@@ -1000,19 +1103,23 @@ export default function ProfilePage({
 
             {!currentUser ? (
               <>
-                <div className="submodal-body">
-                  <div className="settings-info-item">
-                    <span className="settings-label">สถานะบัญชี</span>
-                    <strong>ยังไม่ได้เข้าสู่ระบบ</strong>
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5">
+                    <span className="text-xs font-semibold text-slate-500">สถานะบัญชี</span>
+                    <strong className="text-xs font-bold text-slate-900">ยังไม่ได้เข้าสู่ระบบ</strong>
                   </div>
                 </div>
-                <div className="submodal-actions">
-                  <button type="button" className="submodal-cancel-btn" onClick={closeSettingsModal}>
+                <div className="mt-1 flex items-center gap-2.5">
+                  <button
+                    type="button"
+                    className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-200"
+                    onClick={closeSettingsModal}
+                  >
                     ปิด
                   </button>
                   <button
                     type="button"
-                    className="submodal-save-btn"
+                    className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-[#ec008c] to-pink-600 text-sm font-bold text-white shadow-[0_4px_14px_rgba(236,0,140,0.25)] transition-all hover:brightness-105"
                     onClick={() => {
                       closeSettingsModal();
                       onNavigateToLogin?.();
@@ -1024,11 +1131,11 @@ export default function ProfilePage({
                 </div>
               </>
             ) : (
-              <form className="profile-settings-form" onSubmit={handleSaveProfileSettings}>
-                <div className="settings-avatar-editor">
+              <form className="flex flex-col gap-3" onSubmit={handleSaveProfileSettings}>
+                <div className="flex items-center gap-3.5 rounded-2xl border border-slate-200 bg-slate-50 p-3">
                   <button
                     type="button"
-                    className="settings-avatar-preview-wrap settings-avatar-trigger"
+                    className="group relative h-17 w-17 shrink-0 rounded-full border-0 bg-transparent p-0 transition-transform hover:not-disabled:scale-[1.03] disabled:cursor-not-allowed disabled:opacity-65"
                     onClick={() => avatarInputRef.current?.click()}
                     disabled={settingsSaving}
                     title="คลิกที่รูปเพื่อเปลี่ยนรูปโปรไฟล์"
@@ -1037,21 +1144,28 @@ export default function ProfilePage({
                     <img
                       src={settingsAvatarPreview || currentUser.avatar || DEFAULT_AVATAR_URL}
                       alt={settingsDisplayName || currentUser.displayName || 'รูปโปรไฟล์'}
-                      className="settings-avatar-preview-img"
+                      className="block h-17 w-17 rounded-full border-2 border-white bg-slate-200 object-cover shadow-md transition-colors group-hover:border-[#ec008c]"
                     />
-                    <span className="settings-avatar-camera-btn" aria-hidden="true">
+                    <span
+                      className="pointer-events-none absolute -right-0.5 -bottom-0.5 grid h-6.5 w-6.5 place-items-center rounded-full border-2 border-white bg-[#ec008c] text-white shadow-[0_2px_8px_rgba(236,0,140,0.35)]"
+                      aria-hidden="true"
+                    >
                       <Camera size={15} />
                     </span>
                   </button>
-                  <div className="settings-avatar-meta">
-                    <div className="settings-avatar-identity">
-                      <div className="settings-avatar-identity-row">
-                        <span className="settings-label">อีเมล SPU</span>
-                        <strong className="settings-identity-value">{currentUser.email || '—'}</strong>
+                  <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-baseline justify-between gap-2 text-xs">
+                        <span className="shrink-0 font-semibold text-slate-500">อีเมล SPU</span>
+                        <strong className="truncate text-right font-bold text-slate-900">
+                          {currentUser.email || '—'}
+                        </strong>
                       </div>
-                      <div className="settings-avatar-identity-row">
-                        <span className="settings-label">รหัสนักศึกษา</span>
-                        <strong className="settings-identity-value">{currentUser.studentId || '—'}</strong>
+                      <div className="flex items-baseline justify-between gap-2 text-xs">
+                        <span className="shrink-0 font-semibold text-slate-500">รหัสนักศึกษา</span>
+                        <strong className="truncate text-right font-bold text-slate-900">
+                          {currentUser.studentId || '—'}
+                        </strong>
                       </div>
                     </div>
                   </div>
@@ -1064,16 +1178,16 @@ export default function ProfilePage({
                   />
                 </div>
 
-                <div className="settings-form-field">
-                  <label htmlFor="profile-settings-display-name" className="settings-field-label">
-                    Display Name <span className="settings-required">*</span>
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="profile-settings-display-name" className="text-xs font-bold text-slate-700">
+                    Display Name <span className="text-[#ec008c]">*</span>
                   </label>
-                  <div className="settings-input-wrap">
-                    <User size={16} className="settings-input-icon" aria-hidden="true" />
+                  <div className="relative flex items-center">
+                    <User size={16} className="pointer-events-none absolute left-3 text-slate-500" aria-hidden="true" />
                     <input
                       id="profile-settings-display-name"
                       type="text"
-                      className="settings-input"
+                      className="min-h-10.5 w-full rounded-xl border border-slate-300 bg-white py-2 pr-3 pl-9 text-xs text-slate-900 transition-colors focus:border-[#ec008c] focus:outline-none focus:ring-3 focus:ring-[#ec008c]/15 disabled:bg-slate-50 disabled:text-slate-500"
                       value={settingsDisplayName}
                       onChange={(e) => setSettingsDisplayName(e.target.value)}
                       placeholder="ชื่อที่แสดงในตลาด SPU"
@@ -1084,15 +1198,15 @@ export default function ProfilePage({
                   </div>
                 </div>
 
-                <div className="settings-form-field">
-                  <label htmlFor="profile-settings-faculty" className="settings-field-label">
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="profile-settings-faculty" className="text-xs font-bold text-slate-700">
                     คณะ / วิทยาลัย
                   </label>
-                  <div className="settings-input-wrap">
-                    <Landmark size={16} className="settings-input-icon" aria-hidden="true" />
+                  <div className="relative flex items-center">
+                    <Landmark size={16} className="pointer-events-none absolute left-3 text-slate-500" aria-hidden="true" />
                     <select
                       id="profile-settings-faculty"
-                      className="settings-input settings-select"
+                      className="min-h-10.5 w-full cursor-pointer rounded-xl border border-slate-300 bg-white py-2 pr-3 pl-9 text-xs text-slate-900 transition-colors focus:border-[#ec008c] focus:outline-none focus:ring-3 focus:ring-[#ec008c]/15 disabled:bg-slate-50 disabled:text-slate-500"
                       value={settingsFaculty}
                       onChange={handleSettingsFacultyChange}
                       disabled={settingsSaving}
@@ -1117,15 +1231,15 @@ export default function ProfilePage({
                     settingsMajor && availableMajors.length > 0 && !availableMajors.includes(settingsMajor)
                   );
                   return (
-                    <div className="settings-form-field">
-                      <label htmlFor="profile-settings-major" className="settings-field-label">
+                    <div className="flex flex-col gap-1.5">
+                      <label htmlFor="profile-settings-major" className="text-xs font-bold text-slate-700">
                         สาขาวิชา
                       </label>
-                      <div className="settings-input-wrap">
-                        <GraduationCap size={16} className="settings-input-icon" aria-hidden="true" />
+                      <div className="relative flex items-center">
+                        <GraduationCap size={16} className="pointer-events-none absolute left-3 text-slate-500" aria-hidden="true" />
                         <select
                           id="profile-settings-major"
-                          className="settings-input settings-select"
+                          className="min-h-10.5 w-full cursor-pointer rounded-xl border border-slate-300 bg-white py-2 pr-3 pl-9 text-xs text-slate-900 transition-colors focus:border-[#ec008c] focus:outline-none focus:ring-3 focus:ring-[#ec008c]/15 disabled:bg-slate-50 disabled:text-slate-500"
                           value={!settingsFaculty || availableMajors.length === 0 ? '' : settingsMajor}
                           onChange={(e) => setSettingsMajor(e.target.value)}
                           disabled={isMajorDisabled}
@@ -1151,16 +1265,16 @@ export default function ProfilePage({
                   );
                 })()}
 
-                <div className="settings-form-field">
-                  <label htmlFor="profile-settings-contact" className="settings-field-label">
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="profile-settings-contact" className="text-xs font-bold text-slate-700">
                     ช่องทางติดต่อ (LINE ID / เบอร์โทร)
                   </label>
-                  <div className="settings-input-wrap">
-                    <Phone size={16} className="settings-input-icon" aria-hidden="true" />
+                  <div className="relative flex items-center">
+                    <Phone size={16} className="pointer-events-none absolute left-3 text-slate-500" aria-hidden="true" />
                     <input
                       id="profile-settings-contact"
                       type="text"
-                      className="settings-input"
+                      className="min-h-10.5 w-full rounded-xl border border-slate-300 bg-white py-2 pr-3 pl-9 text-xs text-slate-900 transition-colors focus:border-[#ec008c] focus:outline-none focus:ring-3 focus:ring-[#ec008c]/15 disabled:bg-slate-50 disabled:text-slate-500"
                       value={settingsContact}
                       onChange={(e) => setSettingsContact(e.target.value)}
                       placeholder="เช่น @spu_line หรือ 08x-xxx-xxxx"
@@ -1171,16 +1285,19 @@ export default function ProfilePage({
                 </div>
 
                 {settingsError && (
-                  <div className="settings-error-banner" role="alert">
+                  <div
+                    className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700"
+                    role="alert"
+                  >
                     <AlertCircle size={15} />
                     <span>{settingsError}</span>
                   </div>
                 )}
 
-                <div className="submodal-actions">
+                <div className="mt-1 flex items-center gap-2.5">
                   <button
                     type="button"
-                    className="submodal-cancel-btn"
+                    className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-65"
                     onClick={closeSettingsModal}
                     disabled={settingsSaving}
                   >
@@ -1188,12 +1305,12 @@ export default function ProfilePage({
                   </button>
                   <button
                     type="submit"
-                    className="submodal-save-btn"
+                    className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-[#ec008c] to-pink-600 text-sm font-bold text-white shadow-[0_4px_14px_rgba(236,0,140,0.25)] transition-all hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-65"
                     disabled={settingsSaving}
                   >
                     {settingsSaving ? (
                       <>
-                        <Loader2 size={16} className="spin" />
+                        <Loader2 size={16} className="animate-spin" />
                         <span>กำลังบันทึก...</span>
                       </>
                     ) : (

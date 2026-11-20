@@ -161,12 +161,13 @@ export default function RegisterPage({ currentUser, onBack }) {
   };
 
   return (
-    <div className="register-page-container">
+    <div className="flex min-h-[calc(100dvh-64px)] w-full flex-col bg-white sm:bg-slate-50/70">
       <Header onBack={onBack} />
-      <HeroBanner />
-      <form onSubmit={handleSubmit} noValidate className="registration-form">
-        <MemberTypeSelector memberType={memberType} onSelectType={handleMemberTypeChange} />
-        <div className="fields-stack">
+      <div className="mx-auto flex w-full max-w-lg flex-col gap-4 px-4 pt-4 pb-24 sm:my-6 sm:rounded-2xl sm:border sm:border-slate-200/80 sm:bg-white sm:p-6 sm:shadow-card">
+        <HeroBanner />
+        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
+          <MemberTypeSelector memberType={memberType} onSelectType={handleMemberTypeChange} />
+          <div className="flex flex-col gap-3.5">
           <FormField
             id="studentId"
             label={memberType === 'student' ? 'รหัสนักศึกษา' : 'รหัสอาจารย์ / บุคลากร'}
@@ -186,7 +187,7 @@ export default function RegisterPage({ currentUser, onBack }) {
           <FacultySelect id="faculty" value={formData.faculty} onChange={handleFacultyChange} error={errors.faculty} required />
           <MajorSelect id="major" faculty={formData.faculty} value={formData.major} onChange={(event) => updateField('major', event.target.value)} error={errors.major} required />
           <FormField
-            id="email" label="Email มหาวิทยาลัย (@spumail.net)" required icon={Mail} type="email"
+            id="email" label="อีเมล มหาวิทยาลัย" required icon={Mail} type="email"
             value={formData.email} onChange={(event) => updateField('email', event.target.value)}
             placeholder="ชื่อผู้ใช้@spumail.net" helperText={currentUser ? 'ส่งลิงก์ยืนยันไปยังอีเมลของบัญชีนี้' : 'กรอกอีเมลมหาวิทยาลัยเพื่อรับลิงก์ยืนยัน'}
             autoComplete="email" readOnly={Boolean(currentUser)} error={errors.email}
@@ -201,21 +202,58 @@ export default function RegisterPage({ currentUser, onBack }) {
             onToggleConsent1={(checked) => updateField('consent1', checked)}
             onToggleConsent2={(checked) => updateField('consent2', checked)} errors={errors}
           />
-          {registrationMessage && !isMagicLinkOpen && <p className="field-error-text" role="alert">{registrationMessage}</p>}
+          {registrationMessage && !isMagicLinkOpen && <p className="mt-0.5 text-[0.72rem] font-medium text-rose-600" role="alert">{registrationMessage}</p>}
           <SubmitSection isSubmitting={isSubmitting} />
-        </div>
-      </form>
+          </div>
+        </form>
+      </div>
 
-      {isMagicLinkOpen && <div className="seller-otp-backdrop">
-        <section className="seller-otp-modal" role="dialog" aria-modal="true" aria-labelledby="seller-otp-title">
-          <button type="button" className="seller-otp-close" aria-label="ปิด" onClick={() => setIsMagicLinkOpen(false)}><X size={19} /></button>
-          <div className="seller-otp-icon"><ShieldCheck size={23} /></div>
-          <h2 id="seller-otp-title">ตรวจสอบอีเมลของคุณ</h2>
-          <p>{isExpiredLink ? 'ลิงก์ก่อนหน้าใช้แล้วหรือหมดอายุแล้ว' : 'เราส่งลิงก์เข้าสู่ระบบไปที่'} <strong>{formData.email}</strong> {isExpiredLink ? 'ส่งลิงก์ใหม่ แล้วเปิดอีเมลฉบับล่าสุดเพียงครั้งเดียว' : 'เปิดลิงก์เพื่อยืนยันอีเมลและสมัครเป็นผู้ขายให้เสร็จสมบูรณ์'}</p>
-          {registrationMessage && <p className={`seller-otp-feedback ${registrationMessage.startsWith('ส่งลิงก์ยืนยันใหม่') ? 'success' : ''}`} role={registrationMessage.startsWith('ส่งลิงก์ยืนยันใหม่') ? 'status' : 'alert'}>{registrationMessage}</p>}
-          <button type="button" className="seller-otp-resend" disabled={isSubmitting} onClick={handleResendMagicLink}>{isSubmitting ? <><Loader2 size={15} className="spin-icon" /> กำลังส่ง...</> : 'ส่งลิงก์อีกครั้ง'}</button>
-        </section>
-      </div>}
+      {isMagicLinkOpen && (
+        <div className="fixed inset-0 z-[220] grid place-items-center bg-slate-900/58 p-4 backdrop-blur-[3px]">
+          <section
+            className="relative w-full max-w-[400px] rounded-[22px] bg-white px-5.5 pt-6.5 pb-5.5 text-center shadow-[0_24px_70px_rgba(15,23,42,0.28)]"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="seller-otp-title"
+          >
+            <button
+              type="button"
+              className="absolute top-3 right-3 grid h-[34px] w-[34px] place-items-center rounded-full bg-slate-100 text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-900"
+              aria-label="ปิด"
+              onClick={() => setIsMagicLinkOpen(false)}
+            >
+              <X size={19} />
+            </button>
+            <div className="mx-auto mb-3 grid h-[52px] w-[52px] place-items-center rounded-2xl bg-spu-pink-light text-spu-pink">
+              <ShieldCheck size={23} />
+            </div>
+            <h2 id="seller-otp-title" className="text-base font-bold text-slate-900">ตรวจสอบอีเมลของคุณ</h2>
+            <p className="mt-2 mb-4 break-words text-[0.75rem] text-slate-500">
+              {isExpiredLink ? 'ลิงก์ก่อนหน้าใช้แล้วหรือหมดอายุแล้ว' : 'เราส่งลิงก์เข้าสู่ระบบไปที่'}{' '}
+              <strong className="text-slate-700">{formData.email}</strong>{' '}
+              {isExpiredLink ? 'ส่งลิงก์ใหม่ แล้วเปิดอีเมลฉบับล่าสุดเพียงครั้งเดียว' : 'เปิดลิงก์เพื่อยืนยันอีเมลและสมัครเป็นผู้ขายให้เสร็จสมบูรณ์'}
+            </p>
+            {registrationMessage && (
+              <p
+                className={`mt-2 text-left text-[0.7rem] ${
+                  registrationMessage.startsWith('ส่งลิงก์ยืนยันใหม่') ? 'text-emerald-700' : 'text-rose-700'
+                }`}
+                role={registrationMessage.startsWith('ส่งลิงก์ยืนยันใหม่') ? 'status' : 'alert'}
+              >
+                {registrationMessage}
+              </p>
+            )}
+            <button
+              type="button"
+              className="mt-3 inline-flex items-center gap-1.5 text-[0.72rem] font-bold text-spu-pink disabled:cursor-wait disabled:opacity-65"
+              disabled={isSubmitting}
+              onClick={handleResendMagicLink}
+            >
+              {isSubmitting ? <><Loader2 size={15} className="animate-spin" /> กำลังส่ง...</> : 'ส่งลิงก์อีกครั้ง'}
+            </button>
+          </section>
+        </div>
+      )}
 
     </div>
   );

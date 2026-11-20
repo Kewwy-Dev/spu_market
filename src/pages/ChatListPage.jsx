@@ -136,23 +136,191 @@ export default function ChatListPage({ currentUser, onSelectChat, onNavigateHome
     const searchMatch = `${conversation.name || ''} ${conversation.productTitle || ''} ${conversation.location || ''}`.toLocaleLowerCase('th-TH').includes(searchQuery.trim().toLocaleLowerCase('th-TH'));
     return searchMatch && matchesCategory(conversation, activeCategory);
   });
-  return <section className="chat-list-page-container">
-    <header className="chat-main-header">
-      <div className="chat-list-titlebar"><button type="button" className="chat-list-back-btn" onClick={onNavigateHome} aria-label="ย้อนกลับ"><ArrowLeft size={20} /></button><h1>SPU Market Chats</h1></div>
-      <label className="chat-search-wrap"><Search size={16} className="chat-search-icon" /><input className="chat-search-input" placeholder="ค้นหาแชทหรือสินค้า..." value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} /></label>
-    </header>
-    <div className="chat-filter-tabs">{CHAT_FILTER_TABS.map((tab) => {
-      const hasUnread = conversations.some((conversation) => matchesCategory(conversation, tab.key) && conversation.unreadCount > 0);
-      return <button type="button" key={tab.key} className={`chat-tab-pill ${activeCategory === tab.key ? 'active' : ''}`} onClick={() => setActiveCategory(tab.key)}><span>{tab.label}</span>{hasUnread && <span className="unread-dot-inline" aria-label="มีข้อความที่ยังไม่ได้อ่าน" />}</button>;
-    })}</div>
-    {error && <p className="chat-live-error" role="alert">โหลดแชทไม่สำเร็จ: {error}</p>}
-    <SkeletonReveal loading={loading} skeleton={<div className="chat-items-list chat-skeleton-list" aria-hidden="true">{[0, 1, 2, 3].map((item) => <div className="chat-list-card" key={item}><SkeletonBlock className="chat-skeleton-avatar" /><div className="chat-skeleton-copy"><SkeletonBlock /><SkeletonBlock /><SkeletonBlock /></div></div>)}</div>}>
-    {visibleConversations.length === 0 ? <div className="chat-live-empty"><div className="chat-empty-icon"><Search size={26} /></div><p>{searchQuery ? 'ไม่พบแชทที่ค้นหา' : activeCategory === 'completed' ? 'ยังไม่มีรายการนัดรับสำเร็จ' : activeCategory === 'cancelled' ? 'ยังไม่มีรายการยกเลิกนัดรับ' : activeCategory === 'pending' ? 'ยังไม่มีรายการรอนัดรับ' : activeCategory === 'chatting' ? 'ยังไม่มีห้องแชทพูดคุย' : 'ยังไม่มีห้องแชทซื้อขาย'}</p><small>เริ่มแชทได้จากหน้ารายละเอียดสินค้า</small></div> : <div className="chat-items-list">{visibleConversations.map((chat) => <button type="button" key={chat.id} className="chat-list-card" onClick={() => onSelectChat(chat)}>
-      <div className="chat-card-avatar-wrap">{chat.image ? <img src={chat.image} alt="" className="chat-card-avatar" /> : <div className="chat-official-avatar"><ShieldCheck size={22} /></div>}{chat.unreadCount > 0 && <span className="chat-unread-avatar-badge">{chat.unreadCount > 99 ? '99+' : chat.unreadCount}</span>}</div>
-      <div className="chat-card-content"><div className="chat-card-top-row"><div className="chat-card-sender-name"><span className="sender-title">{chat.name}</span><CheckCircle2 size={14} className="profile-verified-icon" /><span className="chat-role-badge">{chat.roleLabel}</span></div><div className="chat-card-time-row"><Clock size={11} /><span className="chat-time-label">{formatChatDate(chat.updated_at)}</span></div></div>
-        <div className="chat-product-ref-label"><span className="chat-product-title-badge">{chat.productTitle}</span>{chat.location && <span className="chat-pickup-location-badge"><MapPin size={11} />{chat.location}</span>}{chat.isPickupCompleted && <span className="chat-completed-badge"><CheckCircle2 size={11} />นัดรับสำเร็จ</span>}{chat.isPickupCancelled && <span className="chat-cancelled-badge">ยกเลิกนัดรับ</span>}</div><div className="chat-card-bottom-row"><div className="chat-last-msg-box"><p className={`chat-last-message ${chat.unreadCount ? 'has-unread' : ''}`}>{chat.lastMessage}</p></div></div>
+  return (
+    <section className="relative flex min-h-[calc(100dvh-64px)] w-full flex-col bg-white pb-16 text-[#172033]">
+      <header className="sticky top-0 z-30 w-full border-b border-slate-100 bg-white/95 backdrop-blur-sm">
+        <div className="mx-auto flex min-h-14 w-full max-w-7xl items-center justify-between gap-2.5 px-4 sm:px-6">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <button
+              type="button"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-700 transition-colors hover:bg-slate-100 hover:text-spu-pink"
+              onClick={onNavigateHome}
+              aria-label="ย้อนกลับ"
+            >
+              <ArrowLeft size={20} />
+            </button>
+            <h1 className="m-0 truncate text-base sm:text-lg font-bold tracking-[-0.2px] text-slate-900">
+              SPU Market Chats
+            </h1>
+          </div>
+          <span className="shrink-0 rounded-full border border-spu-pink-border bg-spu-pink-light px-2.5 py-0.5 text-[0.7rem] font-bold text-pink-700 tabular-nums">
+            {conversations.length} ห้องแชท
+          </span>
+        </div>
+      </header>
+
+      <div className="w-full border-b border-pink-100 bg-white">
+        <div className="mx-auto flex w-full max-w-5xl flex-col gap-2.5 px-3.5 py-2.5 sm:px-6">
+          <label className="flex items-center gap-2 rounded-[14px] border border-spu-pink-border bg-[#fff7fb] px-3 py-2 focus-within:border-spu-pink focus-within:bg-white focus-within:ring-2 focus-within:ring-spu-pink/15">
+            <Search size={16} className="shrink-0 text-slate-400" />
+            <input
+              className="min-w-0 flex-1 border-0 bg-transparent text-[0.78rem] sm:text-sm text-[#172033] outline-none focus:outline-none placeholder:text-[#be8aa2]"
+              placeholder="ค้นหาแชทหรือสินค้า..."
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+            />
+          </label>
+          <div className="scrollbar-none flex gap-1.5 overflow-x-auto pb-0.5">
+            {CHAT_FILTER_TABS.map((tab) => {
+              const hasUnread = conversations.some((conversation) => matchesCategory(conversation, tab.key) && conversation.unreadCount > 0);
+              const isActive = activeCategory === tab.key;
+              return (
+                <button
+                  type="button"
+                  key={tab.key}
+                  className={`inline-flex shrink-0 items-center gap-1 rounded-[14px] px-3 py-1.5 text-[0.68rem] sm:text-xs transition-all duration-150 ${
+                    isActive
+                      ? 'bg-spu-pink font-bold text-white shadow-xs'
+                      : 'bg-slate-100 font-semibold text-slate-500 hover:bg-slate-200/70'
+                  }`}
+                  onClick={() => setActiveCategory(tab.key)}
+                >
+                  <span>{tab.label}</span>
+                  {hasUnread && (
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${isActive ? 'bg-white' : 'bg-spu-pink'}`}
+                      aria-label="มีข้อความที่ยังไม่ได้อ่าน"
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
-    </button>)}</div>}
-    </SkeletonReveal>
-  </section>;
+
+      {error && (
+        <p className="mx-auto mt-2 w-full max-w-5xl px-3.5 text-[0.74rem] text-rose-700 sm:px-6" role="alert">
+          <span className="block rounded-[10px] bg-rose-50 px-3.5 py-2">โหลดแชทไม่สำเร็จ: {error}</span>
+        </p>
+      )}
+
+      <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col [&>.spectrum-skeleton-reveal]:flex [&>.spectrum-skeleton-reveal]:flex-1 [&>.spectrum-skeleton-reveal]:flex-col [&_.spectrum-skeleton-content]:flex [&_.spectrum-skeleton-content]:flex-1 [&_.spectrum-skeleton-content]:flex-col">
+        <SkeletonReveal
+          loading={loading}
+          skeleton={
+            <div className="chat-skeleton-list px-3.5 py-2 sm:px-6" aria-hidden="true">
+              {[0, 1, 2, 3].map((item) => (
+                <div className="chat-list-card flex items-center gap-3 py-3" key={item}>
+                  <SkeletonBlock className="chat-skeleton-avatar" />
+                  <div className="chat-skeleton-copy">
+                    <SkeletonBlock />
+                    <SkeletonBlock />
+                    <SkeletonBlock />
+                  </div>
+                </div>
+              ))}
+            </div>
+          }
+        >
+          {visibleConversations.length === 0 ? (
+            <div className="grid flex-1 place-content-center justify-items-center gap-2 px-4 py-12 text-center text-[0.8rem] text-slate-500">
+              <div className="grid h-14 w-14 place-items-center rounded-full bg-pink-100 text-pink-700">
+                <Search size={26} />
+              </div>
+              <p className="font-semibold text-slate-700">
+                {searchQuery
+                  ? 'ไม่พบแชทที่ค้นหา'
+                  : activeCategory === 'completed'
+                    ? 'ยังไม่มีรายการนัดรับสำเร็จ'
+                    : activeCategory === 'cancelled'
+                      ? 'ยังไม่มีรายการยกเลิกนัดรับ'
+                      : activeCategory === 'pending'
+                        ? 'ยังไม่มีรายการรอนัดรับ'
+                        : activeCategory === 'chatting'
+                          ? 'ยังไม่มีห้องแชทพูดคุย'
+                          : 'ยังไม่มีห้องแชทซื้อขาย'}
+              </p>
+              <small className="text-slate-400">เริ่มแชทได้จากหน้ารายละเอียดสินค้า</small>
+            </div>
+          ) : (
+            <div className="flex w-full min-w-0 flex-col divide-y divide-slate-100">
+              {visibleConversations.map((chat) => (
+                <button
+                  type="button"
+                  key={chat.id}
+                  className="flex w-full min-w-0 items-center gap-3 bg-white px-3.5 py-3 text-left transition-colors duration-150 hover:bg-[#fff7fb] sm:px-6"
+                  onClick={() => onSelectChat(chat)}
+                >
+                  <div className="relative h-[46px] w-[46px] shrink-0">
+                    {chat.image ? (
+                      <img src={chat.image} alt="" className="h-full w-full rounded-full object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center rounded-full bg-spu-pink text-white">
+                        <ShieldCheck size={22} />
+                      </div>
+                    )}
+                    {chat.unreadCount > 0 && (
+                      <span className="absolute top-1/2 left-1/2 grid h-[23px] min-w-[23px] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-2 border-white bg-pink-500 px-[5px] text-[0.62rem] font-extrabold leading-none text-white shadow-[0_2px_8px_rgba(190,24,93,0.3)] tabular-nums">
+                        {chat.unreadCount > 99 ? '99+' : chat.unreadCount}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex min-w-0 flex-wrap items-center gap-1">
+                        <span className="max-w-[min(48vw,210px)] sm:max-w-[300px] truncate text-[0.82rem] sm:text-sm font-extrabold text-[#172033]">
+                          {chat.name}
+                        </span>
+                        <CheckCircle2 size={14} className="shrink-0 text-spu-teal" />
+                        <span className="inline-flex items-center whitespace-nowrap rounded-full border border-pink-300 bg-[#fff1f7] px-[7px] py-0.5 text-[0.58rem] font-extrabold leading-[1.3] text-pink-700">
+                          {chat.roleLabel}
+                        </span>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1 text-slate-400">
+                        <Clock size={11} />
+                        <span className="text-[0.62rem] text-slate-500 tabular-nums">{formatChatDate(chat.updated_at)}</span>
+                      </div>
+                    </div>
+                    <div className="my-1 flex min-w-0 flex-wrap items-center gap-1.5">
+                      <span className="max-w-[62%] min-w-0 truncate rounded-full border border-spu-pink-border bg-spu-pink-light px-2 py-[3px] text-[0.62rem] font-bold leading-[1.35] text-pink-700">
+                        {chat.productTitle}
+                      </span>
+                      {chat.location && (
+                        <span className="inline-flex max-w-[62%] min-w-0 items-center gap-1 truncate rounded-full border border-slate-200 bg-white px-2 py-[3px] text-[0.62rem] font-semibold leading-[1.35] text-slate-500">
+                          <MapPin size={11} className="shrink-0" />
+                          <span className="truncate">{chat.location}</span>
+                        </span>
+                      )}
+                      {chat.isPickupCompleted && (
+                        <span className="inline-flex items-center gap-[3px] whitespace-nowrap rounded-full border border-spu-teal-border bg-spu-teal-light px-[7px] py-0.5 text-[0.58rem] font-bold text-spu-teal">
+                          <CheckCircle2 size={11} />นัดรับสำเร็จ
+                        </span>
+                      )}
+                      {chat.isPickupCancelled && (
+                        <span className="inline-flex items-center gap-[3px] whitespace-nowrap rounded-full border border-rose-200 bg-rose-50 px-[7px] py-0.5 text-[0.58rem] font-bold text-rose-700">
+                          ยกเลิกนัดรับ
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex min-w-0 flex-1 items-center gap-1">
+                        <p
+                          className={`m-0 truncate text-[0.7rem] sm:text-xs ${
+                            chat.unreadCount ? 'font-bold text-pink-700' : 'text-slate-500'
+                          }`}
+                        >
+                          {chat.lastMessage}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </SkeletonReveal>
+      </div>
+    </section>
+  );
 }

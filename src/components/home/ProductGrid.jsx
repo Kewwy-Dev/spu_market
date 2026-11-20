@@ -26,20 +26,20 @@ export default function ProductGrid({ products, updatedAt, onSelectProduct }) {
   }, []);
 
   return (
-    <section className="product-feed-section">
-      <div className="section-title-row">
-        <div className="title-left">
-          <Flame size={18} className="flame-icon-pink" strokeWidth={2.4} />
-          <h3 className="section-heading">สินค้าลงใหม่ในมอ</h3>
+    <section className="flex w-full min-w-0 flex-col gap-2.5">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5">
+          <Flame size={18} className="text-spu-pink" strokeWidth={2.4} />
+          <h3 className="text-[0.88rem] sm:text-base font-bold text-slate-900">สินค้าลงใหม่ในมอ</h3>
         </div>
-        <div className="feed-update-time">
+        <div className="flex items-center gap-1 text-[0.66rem] sm:text-xs text-slate-500">
           <Clock size={12} />
           <span>อัปเดตล่าสุด {formatRelativeUpdate(updatedAt, now)}</span>
         </div>
       </div>
 
       {products.length > 0 ? (
-        <div className="products-two-col-grid">
+        <div className="grid w-full min-w-0 grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3.5 lg:grid-cols-4 lg:gap-4">
           {products.map((item) => (
             <ProductCard
               key={item.id}
@@ -49,9 +49,9 @@ export default function ProductGrid({ products, updatedAt, onSelectProduct }) {
           ))}
         </div>
       ) : (
-        <div className="products-empty-state">
-          <p>ไม่พบสินค้าที่คุณค้นหา</p>
-          <span>ลองเปลี่ยนคำค้นหา หรือเลือกหมวดหมู่อื่นดูนะครับ</span>
+        <div className="rounded-[14px] border border-dashed border-slate-300 bg-slate-50 px-4 py-9 text-center">
+          <p className="mb-1 text-[0.88rem] font-bold text-slate-700">ไม่พบสินค้าที่คุณค้นหา</p>
+          <span className="text-[0.74rem] text-slate-500">ลองเปลี่ยนคำค้นหา หรือเลือกหมวดหมู่อื่นดูนะครับ</span>
         </div>
       )}
     </section>

@@ -2,12 +2,10 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   ArrowLeft,
   Share2,
-  Heart,
   MapPin,
   MessageCircle,
   ShoppingCart,
   CheckCircle2,
-  AlertCircle,
   ChevronLeft,
   ChevronRight,
   Tag,
@@ -20,6 +18,7 @@ import {
 } from '../lib/marketplace';
 import { supabase } from '../lib/supabase';
 import { LikeButton } from '../components/spectrumui/like-button';
+import AppToast from '../components/common/AppToast';
 
 const money = (value) => new Intl.NumberFormat('th-TH').format(value || 0);
 
@@ -184,10 +183,6 @@ export default function ProductDetailPage({
 
     setIsSaved(nextSaved);
     setIsSaving(true);
-    showToast(
-      nextSaved ? 'บันทึกในรายการที่ถูกใจแล้ว' : 'นำออกจากรายการที่ถูกใจแล้ว',
-      nextSaved ? 'favorite' : 'info'
-    );
 
     try {
       const result = await toggleFavoriteProduct(product.id, currentUser.id);
@@ -347,13 +342,20 @@ export default function ProductDetailPage({
 
   if (isLoadingProduct) {
     return (
-      <div className="product-detail-page-container">
-        <header className="product-view-header">
-          <button type="button" aria-label="ย้อนกลับ" onClick={onBack}>
-            <ArrowLeft size={20} />
-          </button>
+      <div className="min-h-dvh w-full bg-slate-50 pb-20">
+        <header className="sticky top-0 z-[35] w-full border-b border-slate-100 bg-white/95 backdrop-blur-sm">
+          <div className="mx-auto flex min-h-14 w-full max-w-7xl items-center justify-between px-4 sm:px-6">
+            <button
+              type="button"
+              className="grid h-9 w-9 place-items-center rounded-full border border-slate-200 bg-slate-50 text-slate-700 transition-colors hover:bg-slate-100 hover:text-spu-pink"
+              aria-label="ย้อนกลับ"
+              onClick={onBack}
+            >
+              <ArrowLeft size={20} />
+            </button>
+          </div>
         </header>
-        <div className="product-detail-loading" style={{ padding: '60px 20px', textAlign: 'center' }}>
+        <div className="px-5 py-16 text-center text-sm text-slate-500">
           <p>กำลังโหลดข้อมูลสินค้า...</p>
         </div>
       </div>
@@ -362,8 +364,12 @@ export default function ProductDetailPage({
 
   if (!product) {
     return (
-      <div className="product-not-found">
-        <button type="button" onClick={onBack}>
+      <div className="grid min-h-[60vh] place-content-center justify-items-center gap-3 px-4 text-center text-slate-500">
+        <button
+          type="button"
+          className="inline-flex items-center gap-1.5 font-semibold text-spu-pink hover:underline"
+          onClick={onBack}
+        >
           <ArrowLeft size={18} /> กลับไปหน้าสินค้า
         </button>
         <p>ไม่พบสินค้านี้</p>
@@ -400,218 +406,234 @@ export default function ProductDetailPage({
   };
 
   return (
-    <div className="product-detail-page-container">
-      {/* Toast Notification */}
-      {toast && (
-        <aside
-          className={`product-detail-toast toast-${toast.type}`}
-          role="status"
-          aria-live="polite"
-        >
-          {toast.type === 'favorite' ? (
-            <Heart size={16} fill="currentColor" />
-          ) : toast.type === 'error' ? (
-            <AlertCircle size={16} />
-          ) : (
-            <CheckCircle2 size={16} />
-          )}
-          <span>{toast.message}</span>
-        </aside>
-      )}
+    <div className="min-h-dvh w-full bg-slate-50 pb-24">
+      <AppToast toast={toast} />
 
-      <header className="product-view-header">
-        <button type="button" aria-label="ย้อนกลับ" onClick={onBack}>
-          <ArrowLeft size={20} />
-        </button>
-        <div>
+      <header className="sticky top-0 z-[35] w-full border-b border-slate-100 bg-white/95 backdrop-blur-sm">
+        <div className="mx-auto flex min-h-14 w-full max-w-7xl items-center justify-between px-4 sm:px-6">
           <button
             type="button"
-            aria-label="แชร์สินค้า"
-            title="แชร์สินค้านี้"
-            onClick={handleShare}
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-slate-200 bg-slate-50 text-slate-700 transition-colors hover:bg-slate-100 hover:text-spu-pink"
+            aria-label="ย้อนกลับ"
+            onClick={onBack}
           >
-            <Share2 size={19} />
+            <ArrowLeft size={20} />
           </button>
-          <LikeButton
-            liked={isSaved}
-            showCount={false}
-            size="md"
-            label={isSaved ? 'นำออกจากสินค้าที่ถูกใจ' : 'บันทึกเป็นสินค้าที่ถูกใจ'}
-            title={isSaved ? 'นำออกจากสินค้าที่ถูกใจ' : 'บันทึกเป็นสินค้าที่ถูกใจ'}
-            className={isSaved ? 'saved' : ''}
-            onLikedChange={handleToggleFavorite}
-            disabled={isSaving}
-          />
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              className="grid h-9 w-9 place-items-center rounded-full text-slate-700 transition-colors hover:bg-slate-100 hover:text-spu-pink"
+              aria-label="แชร์สินค้า"
+              title="แชร์สินค้านี้"
+              onClick={handleShare}
+            >
+              <Share2 size={19} />
+            </button>
+            <LikeButton
+              liked={isSaved}
+              showCount={false}
+              size="md"
+              label={isSaved ? 'นำออกจากสินค้าที่ถูกใจ' : 'บันทึกเป็นสินค้าที่ถูกใจ'}
+              title={isSaved ? 'นำออกจากสินค้าที่ถูกใจ' : 'บันทึกเป็นสินค้าที่ถูกใจ'}
+              className={`!h-9 !w-9 !border-0 !p-0 ${
+                isSaved
+                  ? '!bg-spu-pink-light !text-spu-pink'
+                  : '!bg-transparent !text-slate-700 hover:!bg-slate-100 hover:!text-spu-pink'
+              }`}
+              onLikedChange={handleToggleFavorite}
+              disabled={isSaving}
+            />
+          </div>
         </div>
       </header>
 
-      {/* Main Image Slider with Swipe Animation */}
-      <div
-        className="product-view-image-wrap"
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        onTouchCancel={handleTouchEnd}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseLeave}
-      >
-        {images.length > 0 ? (
-          <div
-            className="product-slider-track"
-            style={{
-              transform: `translateX(calc(-${imageIndex * 100}% + ${touchDeltaX}px))`,
-              transition: isSwiping ? 'none' : 'transform 0.36s cubic-bezier(0.22, 1, 0.36, 1)',
-            }}
-          >
-            {images.map((imgSrc, idx) => (
-              <div
-                key={idx}
-                className="product-slider-slide"
-                onClick={() => {
-                  if (!hasMoved.current) {
-                    setIsExpanded(true);
-                  }
-                }}
-              >
-                <img
-                  src={imgSrc}
-                  alt={`${product.title} ${idx + 1}`}
-                  className="product-view-image"
-                  draggable={false}
+      <div className="mx-auto w-full max-w-7xl px-3 pt-2.5 sm:px-6 lg:grid lg:grid-cols-12 lg:items-start lg:gap-6 lg:pt-6">
+        {/* Main Image Slider with Swipe Animation */}
+        <div
+          className="relative h-[min(84vw,380px)] select-none overflow-hidden rounded-2xl bg-slate-100 touch-pan-y lg:col-span-7 lg:h-[460px]"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          onTouchCancel={handleTouchEnd}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseLeave}
+        >
+          {images.length > 0 ? (
+            <div
+              className="flex h-full w-full will-change-transform"
+              style={{
+                transform: `translateX(calc(-${imageIndex * 100}% + ${touchDeltaX}px))`,
+                transition: isSwiping ? 'none' : 'transform 0.36s cubic-bezier(0.22, 1, 0.36, 1)',
+              }}
+            >
+              {images.map((imgSrc, idx) => (
+                <div
+                  key={idx}
+                  className="relative h-full w-full shrink-0 select-none"
+                  onClick={() => {
+                    if (!hasMoved.current) {
+                      setIsExpanded(true);
+                    }
+                  }}
+                >
+                  <img
+                    src={imgSrc}
+                    alt={`${product.title} ${idx + 1}`}
+                    className="block h-full w-full cursor-zoom-in select-none object-cover"
+                    draggable={false}
+                  />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid h-full place-items-center text-sm text-slate-500">ไม่มีรูปภาพ</div>
+          )}
+
+          {product.tag && (
+            <span className="absolute bottom-2.5 left-2.5 rounded-full bg-spu-pink px-2.5 py-1 text-[0.66rem] font-bold text-white">
+              {product.tag}
+            </span>
+          )}
+
+          {/* Pagination Dots for multiple images */}
+          {images.length > 1 && (
+            <div className="pointer-events-auto absolute bottom-2.5 left-1/2 z-[5] flex -translate-x-1/2 items-center gap-[5px] rounded-full bg-slate-900/45 px-2 py-1 backdrop-blur-xs">
+              {images.map((_, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  className={`h-1.5 cursor-pointer rounded-full border-0 p-0 transition-all duration-250 ${
+                    idx === imageIndex ? 'w-4 bg-white' : 'w-1.5 bg-white/50'
+                  }`}
+                  aria-label={`รูปภาพที่ ${idx + 1}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setImageIndex(idx);
+                  }}
                 />
+              ))}
+            </div>
+          )}
+
+          <span className="absolute right-2.5 bottom-2.5 z-[5] rounded-[20px] bg-slate-900/68 px-[9px] py-1 text-[0.7rem] text-white tabular-nums">
+            {images.length ? `${imageIndex + 1}/${images.length}` : '0/0'}
+          </span>
+        </div>
+
+        <div className="min-w-0 px-0.5 pt-3 pb-5 lg:col-span-5 lg:px-0 lg:pt-0">
+          <div className="flex items-center justify-between gap-2">
+            <strong className="text-[1.35rem] sm:text-2xl font-black text-spu-pink tabular-nums">
+              ฿{money(product.price)}
+            </strong>
+            {product.timeAgo && <span className="text-[0.68rem] text-slate-500">{product.timeAgo}</span>}
+          </div>
+          <h1 className="mt-1 text-base sm:text-lg font-bold leading-[1.4] text-[#172033]">{product.title}</h1>
+
+          {/* 1. รายละเอียดสินค้า */}
+          <section className="mt-2.5 rounded-[14px] border border-[#e8edf4] bg-white p-3">
+            <h2 className="text-[0.78rem] font-bold text-spu-pink">รายละเอียดสินค้า</h2>
+            <p className="mt-1.5 whitespace-pre-wrap text-[0.74rem] sm:text-[0.8rem] leading-relaxed text-slate-800">
+              {product.description || 'ไม่มีรายละเอียดสินค้า'}
+            </p>
+          </section>
+
+          {/* หมวดหมู่สินค้า */}
+          <section className="mt-2.5 rounded-[14px] border border-[#e8edf4] bg-white p-3">
+            <div className="flex items-center gap-1.5 text-[0.78rem] text-spu-pink">
+              <Tag size={16} />
+              <strong>หมวดหมู่สินค้า</strong>
+            </div>
+            <p className="mt-1.5 text-[0.76rem] sm:text-[0.8rem] font-bold text-slate-800">{categoryDisplayName}</p>
+          </section>
+
+          {/* จุดนัดรับ */}
+          <section className="mt-2.5 rounded-[14px] border border-[#e8edf4] bg-white p-3">
+            <div className="flex items-center gap-1.5 text-[0.78rem] text-spu-pink">
+              <MapPin size={18} />
+              <strong>จุดนัดรับ</strong>
+            </div>
+            <p className="mt-1.5 text-[0.76rem] sm:text-[0.8rem] font-bold text-slate-800">
+              {product.location || 'ไม่ระบุจุดนัดรับ'}
+            </p>
+          </section>
+
+          {/* ผู้ขาย */}
+          <section className="mt-3 flex items-center gap-2.5 rounded-[14px] border border-[#e8edf4] bg-white px-3.5 py-3">
+            <div className="relative h-[42px] w-[42px] shrink-0">
+              <div className="relative flex aspect-square h-full w-full items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-rose-400 to-[#ec008c] text-[0.95rem] font-extrabold text-white">
+                {sellerAvatarUrl && !avatarLoadFailed ? (
+                  <img
+                    src={sellerAvatarUrl}
+                    alt={product.seller || 'ผู้ขาย'}
+                    className="absolute inset-0 block h-full w-full rounded-full object-cover object-center"
+                    onError={() => setAvatarLoadFailed(true)}
+                  />
+                ) : (
+                  product.seller?.charAt(0) || 'S'
+                )}
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="product-image-empty">ไม่มีรูปภาพ</div>
-        )}
-
-        {product.tag && <span className="product-view-tag">{product.tag}</span>}
-
-        {/* Pagination Dots for multiple images */}
-        {images.length > 1 && (
-          <div className="product-image-dots">
-            {images.map((_, idx) => (
-              <button
-                key={idx}
-                type="button"
-                className={`product-slider-dot ${idx === imageIndex ? 'active' : ''}`}
-                aria-label={`รูปภาพที่ ${idx + 1}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setImageIndex(idx);
-                }}
+              <span
+                className={`absolute bottom-0 left-[30px] z-[2] box-content inline-block h-[11px] w-[11px] rounded-full border-2 border-white ${
+                  sellerStatus.isOnline ? 'bg-green-500' : 'bg-slate-400'
+                }`}
+                title={sellerStatus.isOnline ? 'ออนไลน์' : 'ออฟไลน์'}
               />
-            ))}
-          </div>
-        )}
-
-        <span className="product-image-count">
-          {images.length ? `${imageIndex + 1}/${images.length}` : '0/0'}
-        </span>
+            </div>
+            <div className="flex min-w-0 flex-1 flex-col">
+              <div className="flex min-w-0 items-center gap-1.5">
+                <strong className="truncate text-[0.8rem] text-slate-800">
+                  {product.seller || 'ผู้ขาย SPU Market'}
+                </strong>
+                {(sellerProfile?.is_verified ?? product?.verified) && (
+                  <CheckCircle2 size={14} className="shrink-0 text-spu-teal" />
+                )}
+              </div>
+              <div className="mt-0.5 flex items-center gap-1.5">
+                <span className="text-[0.68rem] leading-[1.2] text-slate-500">{sellerStatus.text}</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="shrink-0 whitespace-nowrap rounded-full border border-spu-pink-border bg-white px-3 py-1.5 text-[0.72rem] font-bold text-spu-pink transition-all duration-200 hover:-translate-y-px hover:border-spu-pink hover:bg-spu-pink-light"
+              onClick={handleViewStore}
+            >
+              ดูร้านค้า
+            </button>
+          </section>
+        </div>
       </div>
 
-      <main className="product-view-content">
-        <div className="product-view-price-row">
-          <strong>฿{money(product.price)}</strong>
-          {product.timeAgo && <span>{product.timeAgo}</span>}
-        </div>
-        <h1>{product.title}</h1>
-
-        {/* 1. รายละเอียดสินค้า */}
-        <section className="product-description-card">
-          <h2>รายละเอียดสินค้า</h2>
-          <p>{product.description || 'ไม่มีรายละเอียดสินค้า'}</p>
-        </section>
-
-        {/* 1. หมวดหมู่สินค้า (บรรทัดต่อจาก รายละเอียดสินค้า - หัวข้อสีเดิม เนื้อหาสีดำ) */}
-        <section className="product-category-card">
-          <div className="product-category-heading">
-            <Tag size={16} />
-            <strong>หมวดหมู่สินค้า</strong>
-          </div>
-          <p>{categoryDisplayName}</p>
-        </section>
-
-        {/* จุดนัดรับ */}
-        <section className="product-pickup-card">
-          <div className="product-pickup-heading">
-            <MapPin size={18} />
-            <strong>จุดนัดรับ</strong>
-          </div>
-          <p>{product.location || 'ไม่ระบุจุดนัดรับ'}</p>
-        </section>
-
-        {/* 2. product-view-seller พร้อมปุ่มดูร้านค้า และ Online-dot ซ้อนทับรูปภาพ */}
-        <section className="product-view-seller">
-          <div className="product-view-avatar-wrap">
-            <div className="product-view-avatar">
-              {sellerAvatarUrl && !avatarLoadFailed ? (
-                <img
-                  src={sellerAvatarUrl}
-                  alt={product.seller || 'ผู้ขาย'}
-                  className="seller-avatar-img"
-                  onError={() => setAvatarLoadFailed(true)}
-                />
-              ) : (
-                product.seller?.charAt(0) || 'S'
-              )}
-            </div>
-            <span
-              className={`seller-avatar-status ${sellerStatus.isOnline ? 'online-dot' : 'offline-dot'}`}
-              title={sellerStatus.isOnline ? 'ออนไลน์' : 'ออฟไลน์'}
-            />
-          </div>
-          <div className="product-view-seller-info">
-            <div className="product-view-seller-name-row">
-              <strong>{product.seller || 'ผู้ขาย SPU Market'}</strong>
-              {(sellerProfile?.is_verified ?? product?.verified) && (
-                <CheckCircle2 size={14} className="profile-verified-icon" />
-              )}
-            </div>
-            <div className="product-view-seller-status">
-              <span className="seller-online-label">{sellerStatus.text}</span>
-            </div>
-          </div>
+      <footer className="fixed inset-x-0 bottom-0 z-[39] border-t border-slate-100 bg-white/96 backdrop-blur-md">
+        <div className="mx-auto flex w-full max-w-7xl gap-2 px-3 pt-2.5 pb-[max(10px,env(safe-area-inset-bottom))] sm:justify-end sm:px-6">
           <button
             type="button"
-            className="product-view-store-btn"
-            onClick={handleViewStore}
+            className="flex min-h-[42px] flex-1 sm:flex-none sm:px-6 items-center justify-center gap-1.5 rounded-xl border border-spu-pink text-[0.78rem] font-extrabold text-spu-pink transition-colors hover:bg-spu-pink-light disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={isOwner}
+            onClick={onNavigateToChat}
           >
-            ดูร้านค้า
+            <MessageCircle size={17} /> {isOwner ? 'สินค้าของคุณ' : 'แชท'}
           </button>
-        </section>
-      </main>
-
-      <footer className="product-view-actions">
-        <button
-          type="button"
-          className="product-chat-action"
-          disabled={isOwner}
-          onClick={onNavigateToChat}
-        >
-          <MessageCircle size={17} /> {isOwner ? 'สินค้าของคุณ' : 'แชท'}
-        </button>
-        <button
-          type="button"
-          className="product-buy-action"
-          disabled={isOwner}
-          onClick={() => onAddToCart?.(product)}
-        >
-          <ShoppingCart size={17} /> {isOwner ? 'สั่งซื้อไม่ได้' : 'สั่งซื้อ'}
-        </button>
+          <button
+            type="button"
+            className="flex min-h-[42px] flex-[1.5] sm:flex-none sm:px-8 items-center justify-center gap-1.5 rounded-xl bg-gradient-to-br from-[#a20857] to-[#ec008c] text-[0.78rem] font-extrabold text-white shadow-sm transition-all hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={isOwner}
+            onClick={() => onAddToCart?.(product)}
+          >
+            <ShoppingCart size={17} /> {isOwner ? 'สั่งซื้อไม่ได้' : 'สั่งซื้อ'}
+          </button>
+        </div>
       </footer>
 
-      {/* 3 & 4. Lightbox: ลบปุ่มปิดภาพออก และทำ Animation สำหรับปัดรูปภาพ */}
+      {/* Lightbox */}
       {isExpanded && (
         <div
-          className="product-image-lightbox"
+          className="fixed inset-0 z-[300] flex cursor-pointer select-none flex-col items-center justify-center bg-black/95"
           onClick={() => setIsExpanded(false)}
         >
           <div
-            className="lightbox-slider-viewport"
+            className="relative flex h-[82vh] w-full max-w-[900px] cursor-default items-center overflow-hidden"
             onClick={(e) => e.stopPropagation()}
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
@@ -622,7 +644,7 @@ export default function ProductDetailPage({
             onMouseLeave={handleMouseLeave}
           >
             <div
-              className="lightbox-slider-track"
+              className="flex h-full w-full will-change-transform"
               style={{
                 transform: `translateX(calc(-${imageIndex * 100}% + ${touchDeltaX}px))`,
                 transition: isSwiping ? 'none' : 'transform 0.36s cubic-bezier(0.22, 1, 0.36, 1)',
@@ -631,12 +653,13 @@ export default function ProductDetailPage({
               {images.map((imgSrc, idx) => (
                 <div
                   key={idx}
-                  className="lightbox-slide"
+                  className="flex h-full w-full shrink-0 cursor-pointer items-center justify-center p-3"
                   onClick={() => setIsExpanded(false)}
                 >
                   <img
                     src={imgSrc}
                     alt={`${product.title} ${idx + 1}`}
+                    className="max-h-full max-w-full select-none rounded-[10px] object-contain"
                     draggable={false}
                   />
                 </div>
@@ -647,7 +670,7 @@ export default function ProductDetailPage({
               <>
                 <button
                   type="button"
-                  className="lightbox-arrow previous"
+                  className="absolute top-1/2 left-3.5 z-10 grid h-11 w-11 -translate-y-1/2 cursor-pointer place-items-center rounded-full bg-white/20 text-white backdrop-blur-xs transition-all hover:scale-108 hover:bg-white/35"
                   aria-label="รูปภาพก่อนหน้า"
                   onClick={(e) => {
                     e.stopPropagation();
@@ -658,7 +681,7 @@ export default function ProductDetailPage({
                 </button>
                 <button
                   type="button"
-                  className="lightbox-arrow next"
+                  className="absolute top-1/2 right-3.5 z-10 grid h-11 w-11 -translate-y-1/2 cursor-pointer place-items-center rounded-full bg-white/20 text-white backdrop-blur-xs transition-all hover:scale-108 hover:bg-white/35"
                   aria-label="รูปภาพถัดไป"
                   onClick={(e) => {
                     e.stopPropagation();
@@ -671,10 +694,10 @@ export default function ProductDetailPage({
             )}
           </div>
 
-          <span className="lightbox-count">
+          <span className="absolute bottom-8 rounded-full bg-white/18 px-3 py-1 text-[0.76rem] font-bold text-white tabular-nums">
             {imageIndex + 1} / {images.length}
           </span>
-          <span className="lightbox-hint">แตะที่ว่างหรือรูปเพื่อปิด</span>
+          <span className="absolute bottom-3 text-[0.65rem] text-white/50">แตะที่ว่างหรือรูปเพื่อปิด</span>
         </div>
       )}
     </div>

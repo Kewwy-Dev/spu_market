@@ -14,7 +14,7 @@ export function SkeletonBlock({ className = '' }) {
 }
 
 export function ProductGridSkeleton({ count = 6 }) {
-  return <div className="products-two-col-grid" aria-hidden="true">{Array.from({ length: count }, (_, index) => (
+  return <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4" aria-hidden="true">{Array.from({ length: count }, (_, index) => (
     <article className="spectrum-product-skeleton" key={index}>
       <SkeletonBlock className="spectrum-product-skeleton-image" />
       <div className="spectrum-product-skeleton-copy"><SkeletonBlock /><SkeletonBlock /><SkeletonBlock /></div>

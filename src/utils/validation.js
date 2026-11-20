@@ -1,5 +1,13 @@
 import { getMajorsByFaculty } from '../data/faculties';
 
+export const ALLOWED_SPU_EMAIL_DOMAINS = ['@spumail.net', '@spu.ac.th'];
+const SPU_EMAIL_PATTERN = /^[^\s@]+@(spumail\.net|spu\.ac\.th)$/i;
+
+export function isAllowedSpuEmail(email) {
+  if (typeof email !== 'string') return false;
+  return SPU_EMAIL_PATTERN.test(email.trim());
+}
+
 export function validateRegistrationForm(formData, memberType) {
   const errors = {};
 

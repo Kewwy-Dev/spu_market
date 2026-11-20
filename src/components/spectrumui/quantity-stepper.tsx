@@ -260,9 +260,9 @@ export function QuantityStepper({
   )
 
   const buttonClasses = cn(
-    "cart-qty-btn quantity-stepper-button flex shrink-0 touch-manipulation items-center justify-center rounded-full text-neutral-600 transition-colors",
-    "hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800",
-    "focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-neutral-950 dark:focus-visible:ring-neutral-300",
+    "cart-qty-btn quantity-stepper-button flex shrink-0 touch-manipulation items-center justify-center rounded-full text-[#a20857] transition-colors",
+    "hover:bg-pink-50 active:bg-pink-100",
+    "focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-[#ec008c]",
     button,
   )
 
@@ -285,9 +285,8 @@ export function QuantityStepper({
       role="group"
       aria-label="Quantity"
       className={cn(
-        "cart-qty-control quantity-stepper inline-flex select-none items-center rounded-full bg-white",
-        "shadow-[0px_0px_0px_1px_rgba(0,0,0,0.06),0px_1px_2px_0px_rgba(0,0,0,0.04),0px_2px_4px_0px_rgba(0,0,0,0.04)]",
-        "dark:border dark:border-neutral-800 dark:bg-neutral-900 dark:shadow-none",
+        "cart-qty-control quantity-stepper inline-flex select-none items-center rounded-full border border-slate-200 bg-white",
+        "shadow-[0_1px_3px_rgba(15,23,42,0.06)]",
         flash > 0 && "quantity-stepper-invalid",
         disabled && "pointer-events-none opacity-50",
         container,
@@ -320,11 +319,11 @@ export function QuantityStepper({
         onKeyDown={handleKeyDown}
         animate={shakeControls}
         className={cn(
-          "cart-qty-num flex items-center justify-center overflow-hidden px-1 font-medium tabular-nums transition-colors",
-          "focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-neutral-950 dark:focus-visible:ring-neutral-300",
+          "cart-qty-num flex items-center justify-center overflow-hidden px-1 font-bold tabular-nums transition-colors",
+          "focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-[#ec008c]",
           flash > 0
-            ? "text-rose-500 dark:text-rose-400"
-            : "text-neutral-900 dark:text-neutral-100",
+            ? "text-rose-500"
+            : "text-slate-900",
           valueClasses,
         )}
       >
