@@ -42,8 +42,10 @@ export default function RegisterPage({ currentUser, onBack }) {
   });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isMagicLinkOpen, setIsMagicLinkOpen] = useState(linkExpired);
-  const [registrationMessage, setRegistrationMessage] = useState(linkExpired ? 'ลิงก์นี้ถูกใช้ไปแล้วหรือหมดอายุ กรุณาส่งลิงก์ใหม่' : '');
+  const [isOtpModalOpen, setIsOtpModalOpen] = useState(linkExpired);
+  const [otpCode, setOtpCode] = useState('');
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [registrationMessage, setRegistrationMessage] = useState(linkExpired ? 'รหัสหรือลิงก์ก่อนหน้าหมดอายุ กรุณาส่งรหัส OTP ใหม่' : '');
 
   useEffect(() => {
     if (!currentUser) return;
@@ -90,7 +92,7 @@ export default function RegisterPage({ currentUser, onBack }) {
     if (errors.studentId) setErrors((previous) => ({ ...previous, studentId: undefined }));
   };
 
-  const requestMagicLink = async () => {
+  const requestOtpEmail = async () => {
     const metadata = {
       display_name: formData.fullName.trim(),
       student_id: formData.studentId.trim(),
@@ -113,7 +115,6 @@ export default function RegisterPage({ currentUser, onBack }) {
       options: {
         shouldCreateUser: !currentUser,
         ...(currentUser ? {} : { data: metadata }),
-        emailRedirectTo: window.location.origin,
       },
     });
     if (error) {
@@ -138,25 +139,56 @@ export default function RegisterPage({ currentUser, onBack }) {
 
     setIsSubmitting(true);
     try {
-      await requestMagicLink();
-      setIsMagicLinkOpen(true);
+      await requestOtpEmail();
+      setOtpCode('');
+      setIsOtpModalOpen(true);
     } catch (error) {
-      setRegistrationMessage(error.message || 'ส่งลิงก์ยืนยันไม่สำเร็จ กรุณาลองอีกครั้ง');
+      setRegistrationMessage(error.message || 'ส่งรหัส OTP ไม่สำเร็จ กรุณาลองอีกครั้ง');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleResendMagicLink = async () => {
+  const handleResendOtp = async () => {
     setRegistrationMessage('');
     setIsSubmitting(true);
     try {
-      await requestMagicLink();
-      setRegistrationMessage('ส่งลิงก์ยืนยันใหม่แล้ว');
+      await requestOtpEmail();
+      setOtpCode('');
+      setRegistrationMessage('ส่งรหัส OTP ใหม่แล้ว');
     } catch (error) {
-      setRegistrationMessage(error.message || 'ส่งลิงก์ยืนยันไม่สำเร็จ กรุณาลองอีกครั้ง');
+      setRegistrationMessage(error.message || 'ส่งรหัส OTP ไม่สำเร็จ กรุณาลองอีกครั้ง');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleVerifyOtp = async (event) => {
+    event.preventDefault();
+    setRegistrationMessage('');
+    const trimmedOtp = otpCode.trim();
+    if (trimmedOtp.length !== 6) {
+      setRegistrationMessage('กรุณากรอกรหัส OTP 6 หลักให้ครบถ้วน');
+      return;
+    }
+    if (!supabase) {
+      setRegistrationMessage(getSupabaseConfigError());
+      return;
+    }
+
+    setIsVerifyingOtp(true);
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        email: formData.email.trim().toLowerCase(),
+        token: trimmedOtp,
+        type: 'email',
+      });
+      if (error) throw error;
+      setIsOtpModalOpen(false);
+    } catch (error) {
+      setRegistrationMessage(error.message || 'รหัส OTP ไม่ถูกต้องหรือหมดอายุ กรุณาลองอีกครั้ง');
+    } finally {
+      setIsVerifyingOtp(false);
     }
   };
 
@@ -189,7 +221,7 @@ export default function RegisterPage({ currentUser, onBack }) {
           <FormField
             id="email" label="อีเมล มหาวิทยาลัย" required icon={Mail} type="email"
             value={formData.email} onChange={(event) => updateField('email', event.target.value)}
-            placeholder="ชื่อผู้ใช้@spumail.net" helperText={currentUser ? 'ส่งลิงก์ยืนยันไปยังอีเมลของบัญชีนี้' : 'กรอกอีเมลมหาวิทยาลัยเพื่อรับลิงก์ยืนยัน'}
+            placeholder="ชื่อผู้ใช้@spumail.net" helperText={currentUser ? 'ส่งรหัส OTP 6 หลักไปยังอีเมลของบัญชีนี้' : 'กรอกอีเมลมหาวิทยาลัยเพื่อรับรหัส OTP 6 หลัก'}
             autoComplete="email" readOnly={Boolean(currentUser)} error={errors.email}
           />
           <FormField
@@ -202,13 +234,13 @@ export default function RegisterPage({ currentUser, onBack }) {
             onToggleConsent1={(checked) => updateField('consent1', checked)}
             onToggleConsent2={(checked) => updateField('consent2', checked)} errors={errors}
           />
-          {registrationMessage && !isMagicLinkOpen && <p className="mt-0.5 text-[0.72rem] font-medium text-rose-600" role="alert">{registrationMessage}</p>}
+          {registrationMessage && !isOtpModalOpen && <p className="mt-0.5 text-[0.72rem] font-medium text-rose-600" role="alert">{registrationMessage}</p>}
           <SubmitSection isSubmitting={isSubmitting} />
           </div>
         </form>
       </div>
 
-      {isMagicLinkOpen && (
+      {isOtpModalOpen && (
         <div className="fixed inset-0 z-[220] grid place-items-center bg-slate-900/58 p-4 backdrop-blur-[3px]">
           <section
             className="relative w-full max-w-[400px] rounded-[22px] bg-white px-5.5 pt-6.5 pb-5.5 text-center shadow-[0_24px_70px_rgba(15,23,42,0.28)]"
@@ -220,36 +252,67 @@ export default function RegisterPage({ currentUser, onBack }) {
               type="button"
               className="absolute top-3 right-3 grid h-[34px] w-[34px] place-items-center rounded-full bg-slate-100 text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-900"
               aria-label="ปิด"
-              onClick={() => setIsMagicLinkOpen(false)}
+              onClick={() => setIsOtpModalOpen(false)}
             >
               <X size={19} />
             </button>
             <div className="mx-auto mb-3 grid h-[52px] w-[52px] place-items-center rounded-2xl bg-spu-pink-light text-spu-pink">
               <ShieldCheck size={23} />
             </div>
-            <h2 id="seller-otp-title" className="text-base font-bold text-slate-900">ตรวจสอบอีเมลของคุณ</h2>
+            <h2 id="seller-otp-title" className="text-base font-bold text-slate-900">ยืนยันรหัส OTP 6 หลัก</h2>
             <p className="mt-2 mb-4 break-words text-[0.75rem] text-slate-500">
-              {isExpiredLink ? 'ลิงก์ก่อนหน้าใช้แล้วหรือหมดอายุแล้ว' : 'เราส่งลิงก์เข้าสู่ระบบไปที่'}{' '}
+              {isExpiredLink ? 'รหัสหรือลิงก์ก่อนหน้าหมดอายุแล้ว' : 'เราส่งรหัส OTP 6 หลักไปที่'}{' '}
               <strong className="text-slate-700">{formData.email}</strong>{' '}
-              {isExpiredLink ? 'ส่งลิงก์ใหม่ แล้วเปิดอีเมลฉบับล่าสุดเพียงครั้งเดียว' : 'เปิดลิงก์เพื่อยืนยันอีเมลและสมัครเป็นผู้ขายให้เสร็จสมบูรณ์'}
+              กรอกรหัสเพื่อยืนยันอีเมลและสมัครเป็นผู้ขายให้เสร็จสมบูรณ์
             </p>
-            {registrationMessage && (
-              <p
-                className={`mt-2 text-left text-[0.7rem] ${
-                  registrationMessage.startsWith('ส่งลิงก์ยืนยันใหม่') ? 'text-emerald-700' : 'text-rose-700'
-                }`}
-                role={registrationMessage.startsWith('ส่งลิงก์ยืนยันใหม่') ? 'status' : 'alert'}
+            <form onSubmit={handleVerifyOtp} className="flex flex-col gap-3">
+              <input
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                autoFocus
+                value={otpCode}
+                onChange={(event) => {
+                  setOtpCode(event.target.value.replace(/\D/g, '').slice(0, 6));
+                  setRegistrationMessage('');
+                }}
+                placeholder="กรอกรหัส 6 หลัก"
+                className="h-12 w-full rounded-xl border-[1.5px] border-slate-200 bg-slate-50 px-3 text-center font-mono text-lg font-bold tracking-[0.45em] text-slate-900 outline-none transition-all focus:border-spu-pink focus:bg-white focus:ring-[3px] focus:ring-spu-pink/12 placeholder:font-sans placeholder:text-sm placeholder:font-normal placeholder:tracking-normal placeholder:text-slate-400"
+                required
+              />
+              {registrationMessage && (
+                <p
+                  className={`text-center text-[0.72rem] font-medium ${
+                    registrationMessage.startsWith('ส่งรหัส OTP ใหม่') ? 'text-emerald-700' : 'text-rose-700'
+                  }`}
+                  role={registrationMessage.startsWith('ส่งรหัส OTP ใหม่') ? 'status' : 'alert'}
+                >
+                  {registrationMessage}
+                </p>
+              )}
+              <button
+                type="submit"
+                disabled={isVerifyingOtp || isSubmitting}
+                className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-spu-pink text-[0.88rem] font-bold text-white shadow-[0_6px_18px_rgba(230,0,126,0.28)] transition-all hover:bg-spu-pink-hover disabled:cursor-not-allowed disabled:opacity-65"
               >
-                {registrationMessage}
-              </p>
-            )}
+                {isVerifyingOtp ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>กำลังตรวจสอบรหัส...</span>
+                  </>
+                ) : (
+                  <span>ยืนยันรหัส OTP</span>
+                )}
+              </button>
+            </form>
             <button
               type="button"
               className="mt-3 inline-flex items-center gap-1.5 text-[0.72rem] font-bold text-spu-pink disabled:cursor-wait disabled:opacity-65"
-              disabled={isSubmitting}
-              onClick={handleResendMagicLink}
+              disabled={isSubmitting || isVerifyingOtp}
+              onClick={handleResendOtp}
             >
-              {isSubmitting ? <><Loader2 size={15} className="animate-spin" /> กำลังส่ง...</> : 'ส่งลิงก์อีกครั้ง'}
+              {isSubmitting ? <><Loader2 size={15} className="animate-spin" /> กำลังส่ง...</> : 'ส่งรหัสอีกครั้ง'}
             </button>
           </section>
         </div>

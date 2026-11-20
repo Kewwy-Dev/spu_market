@@ -1,13 +1,23 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Mail, MailCheck, ShieldCheck, Loader2 } from 'lucide-react';
+import { ArrowLeft, KeyRound, Mail, MailCheck, ShieldCheck, Loader2 } from 'lucide-react';
 import { getSupabaseConfigError, supabase } from '../lib/supabase';
 import { isAllowedSpuEmail } from '../utils/validation';
 
 export default function LoginPage({ onBack, authError = '', onClearAuthError }) {
   const [email, setEmail] = useState('');
+  const [otp, setOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  const sendOtp = async (targetEmail) => {
+    const { error: authError } = await supabase.auth.signInWithOtp({
+      email: targetEmail,
+      options: { shouldCreateUser: false },
+    });
+    if (authError) throw authError;
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -21,16 +31,53 @@ export default function LoginPage({ onBack, authError = '', onClearAuthError }) 
     }
     if (!supabase) return setError(getSupabaseConfigError());
 
+    if (!otpSent) {
+      setIsLoading(true);
+      try {
+        await sendOtp(trimmedEmail);
+        setOtp('');
+        setOtpSent(true);
+        setNotice(`ส่งรหัส OTP 6 หลักไปที่ ${trimmedEmail} แล้ว กรุณากรอกรหัสเพื่อเข้าสู่ระบบ`);
+      } catch (authError) {
+        setError(authError.message || 'ส่งรหัส OTP ไม่สำเร็จ กรุณาลองอีกครั้ง');
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
+
+    const trimmedOtp = otp.trim();
+    if (trimmedOtp.length !== 6) {
+      return setError('กรุณากรอกรหัส OTP 6 หลักให้ครบถ้วน');
+    }
+
     setIsLoading(true);
     try {
-      const { error: authError } = await supabase.auth.signInWithOtp({
+      const { error: verifyError } = await supabase.auth.verifyOtp({
         email: trimmedEmail,
-        options: { shouldCreateUser: false, emailRedirectTo: window.location.origin },
+        token: trimmedOtp,
+        type: 'email',
       });
-      if (authError) throw authError;
-      setNotice('ส่งลิงก์ยืนยันการเข้าสู่ระบบไปที่อีเมลแล้ว กรุณากดยืนยันจากอีเมลก่อนเข้าใช้งาน');
+      if (verifyError) throw verifyError;
+    } catch (verifyError) {
+      setError(verifyError.message || 'รหัส OTP ไม่ถูกต้องหรือหมดอายุ กรุณาลองอีกครั้ง');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    setError('');
+    setNotice('');
+    onClearAuthError?.();
+    const trimmedEmail = email.trim().toLowerCase();
+    if (!supabase) return setError(getSupabaseConfigError());
+    setIsLoading(true);
+    try {
+      await sendOtp(trimmedEmail);
+      setNotice(`ส่งรหัส OTP ใหม่ไปที่ ${trimmedEmail} แล้ว`);
     } catch (authError) {
-      setError(authError.message || 'ส่งอีเมลยืนยันไม่สำเร็จ กรุณาลองอีกครั้ง');
+      setError(authError.message || 'ส่งรหัส OTP ไม่สำเร็จ กรุณาลองอีกครั้ง');
     } finally {
       setIsLoading(false);
     }
@@ -124,6 +171,7 @@ export default function LoginPage({ onBack, authError = '', onClearAuthError }) 
                   id="login-email"
                   type="email"
                   value={email}
+                  readOnly={otpSent}
                   onChange={(event) => {
                     setEmail(event.target.value);
                     setError('');
@@ -132,11 +180,68 @@ export default function LoginPage({ onBack, authError = '', onClearAuthError }) 
                   }}
                   placeholder="กรอกอีเมล"
                   autoComplete="email"
-                  className="h-11 w-full border-0 bg-transparent pr-3 pl-[38px] text-[0.86rem] text-slate-900 outline-none focus:outline-none placeholder:text-[0.84rem] placeholder:text-slate-400"
+                  className={`h-11 w-full border-0 bg-transparent pr-3 pl-[38px] text-[0.86rem] text-slate-900 outline-none focus:outline-none placeholder:text-[0.84rem] placeholder:text-slate-400 ${otpSent ? 'opacity-70' : ''}`}
                   required
                 />
               </div>
             </div>
+
+            {otpSent && (
+              <div className="flex flex-col gap-[5px] animate-[fadeIn_0.2s_ease]">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="login-otp" className="text-[0.82rem] font-semibold text-slate-800">
+                    รหัส OTP 6 หลัก <span className="font-bold text-spu-pink">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    disabled={isLoading}
+                    onClick={() => {
+                      setOtpSent(false);
+                      setOtp('');
+                      setError('');
+                      setNotice('');
+                    }}
+                    className="text-[0.72rem] font-semibold text-spu-pink hover:underline disabled:opacity-60"
+                  >
+                    เปลี่ยนอีเมล
+                  </button>
+                </div>
+                <div className="group relative flex items-center overflow-hidden rounded-xl border-[1.5px] border-slate-200 bg-slate-50 transition-all duration-200 focus-within:border-spu-pink focus-within:bg-white focus-within:ring-[3px] focus-within:ring-spu-pink/12">
+                  <div
+                    className="pointer-events-none absolute left-3 flex items-center text-slate-400 transition-colors duration-200 group-focus-within:text-spu-pink"
+                    aria-hidden="true"
+                  >
+                    <KeyRound size={18} strokeWidth={2} />
+                  </div>
+                  <input
+                    id="login-otp"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    autoFocus
+                    value={otp}
+                    onChange={(event) => {
+                      setOtp(event.target.value.replace(/\D/g, '').slice(0, 6));
+                      setError('');
+                    }}
+                    placeholder="กรอกรหัส 6 หลัก"
+                    className="h-11 w-full border-0 bg-transparent pr-3 pl-[38px] text-center font-mono text-base font-bold tracking-[0.45em] text-slate-900 outline-none focus:outline-none placeholder:font-sans placeholder:text-[0.84rem] placeholder:font-normal placeholder:tracking-normal placeholder:text-slate-400"
+                    required
+                  />
+                </div>
+                <div className="flex justify-end pt-0.5">
+                  <button
+                    type="button"
+                    disabled={isLoading}
+                    onClick={handleResendOtp}
+                    className="text-[0.72rem] font-semibold text-slate-500 hover:text-spu-pink disabled:opacity-60"
+                  >
+                    ไม่ได้รับรหัส? ส่งรหัสอีกครั้ง
+                  </button>
+                </div>
+              </div>
+            )}
 
             {displayError && (
               <div className="rounded-[10px] border border-rose-200 bg-rose-50 px-3 py-2 text-center text-[0.74rem] font-semibold text-rose-700 animate-[fadeIn_0.2s_ease]" role="alert">
@@ -153,7 +258,7 @@ export default function LoginPage({ onBack, authError = '', onClearAuthError }) 
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-[0.8rem] font-bold text-emerald-900">
-                    ส่งลิงก์ยืนยันทางอีเมลแล้ว
+                    ส่งรหัส OTP ทางอีเมลแล้ว
                   </p>
                   <p className="mt-0.5 text-[0.72rem] leading-relaxed text-emerald-700">
                     {notice}
@@ -170,10 +275,10 @@ export default function LoginPage({ onBack, authError = '', onClearAuthError }) 
               {isLoading ? (
                 <>
                   <Loader2 size={18} className="animate-spin" />
-                  <span>กำลังส่งอีเมลยืนยัน...</span>
+                  <span>{otpSent ? 'กำลังตรวจสอบรหัส...' : 'กำลังส่งรหัส OTP...'}</span>
                 </>
               ) : (
-                <span>เข้าสู่ระบบ</span>
+                <span>{otpSent ? 'ยืนยันรหัส OTP' : 'ส่งรหัส OTP'}</span>
               )}
             </button>
 
