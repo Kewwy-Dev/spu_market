@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { InputOTP, REGEXP_ONLY_DIGITS } from '@heroui/react';
 import { Loader2 } from 'lucide-react';
 
-export const OTP_RESEND_COOLDOWN_SECONDS = 300;
+export const OTP_RESEND_COOLDOWN_SECONDS = 60;
 
 function formatCountdown(totalSeconds) {
   const safeSeconds = Math.max(0, totalSeconds);
