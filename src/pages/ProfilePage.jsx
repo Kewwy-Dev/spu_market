@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import SpuSelect from '../components/common/SpuSelect';
 import PrivacyPolicyModal from '../components/PrivacyPolicyModal';
 import PickupHistoryModal from '../components/PickupHistoryModal';
 import AppointmentDetailModal from '../components/AppointmentDetailModal';
@@ -11,7 +12,6 @@ import {
   GraduationCap,
   Settings,
   Store,
-  ChevronDown,
   ChevronRight,
   CheckCircle2,
   Clock,
@@ -1197,32 +1197,23 @@ export default function ProfilePage({
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-1.5">
-                  <label htmlFor="profile-settings-faculty" className="text-xs font-bold text-slate-700">
-                    คณะ
-                  </label>
-                  <div className="relative flex items-center">
-                    <Landmark size={16} className="pointer-events-none absolute left-3 text-slate-500" aria-hidden="true" />
-                    <select
-                      id="profile-settings-faculty"
-                      className="h-11 w-full min-w-0 cursor-pointer appearance-none rounded-xl border border-slate-300 bg-white py-2 pr-9 pl-9 text-xs text-slate-900 transition-colors focus:border-[#ec008c] focus:outline-none focus:ring-3 focus:ring-[#ec008c]/15 disabled:bg-slate-50 disabled:text-slate-500"
-                      value={settingsFaculty}
-                      onChange={handleSettingsFacultyChange}
-                      disabled={settingsSaving}
-                    >
-                      <option value="">เลือกคณะที่เรียน</option>
-                      {settingsFaculty && !FACULTIES.some((f) => f.name === settingsFaculty) && (
-                        <option value={settingsFaculty}>{settingsFaculty}</option>
-                      )}
-                      {FACULTIES.map((faculty) => (
-                        <option key={faculty.id} value={faculty.name}>
-                          {faculty.name}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown size={16} className="pointer-events-none absolute right-3 text-slate-400" aria-hidden="true" />
-                  </div>
-                </div>
+                <SpuSelect
+                  id="profile-settings-faculty"
+                  label="คณะ"
+                  icon={Landmark}
+                  placeholder="เลือกคณะที่เรียน"
+                  value={settingsFaculty}
+                  onValueChange={(nextValue) => handleSettingsFacultyChange({ target: { value: nextValue } })}
+                  options={[
+                    ...(settingsFaculty && !FACULTIES.some((f) => f.name === settingsFaculty)
+                      ? [{ value: settingsFaculty, label: settingsFaculty }]
+                      : []),
+                    ...FACULTIES.map((faculty) => ({ value: faculty.name, label: faculty.name })),
+                  ]}
+                  isDisabled={settingsSaving}
+                  labelClassName="text-xs font-bold text-slate-700"
+                  triggerClassName="bg-white border border-slate-300 text-xs"
+                />
 
                 {(() => {
                   const availableMajors = getMajorsByFaculty(settingsFaculty);
@@ -1230,39 +1221,27 @@ export default function ProfilePage({
                   const hasLegacyMajor = Boolean(
                     settingsMajor && availableMajors.length > 0 && !availableMajors.includes(settingsMajor)
                   );
+                  const majorPlaceholder = !settingsFaculty
+                    ? 'กรุณาเลือกคณะก่อน'
+                    : availableMajors.length === 0
+                      ? 'ไม่พบสาขาวิชาสำหรับคณะนี้'
+                      : 'เลือกสาขาวิชา';
                   return (
-                    <div className="flex flex-col gap-1.5">
-                      <label htmlFor="profile-settings-major" className="text-xs font-bold text-slate-700">
-                        สาขาวิชา
-                      </label>
-                      <div className="relative flex items-center">
-                        <GraduationCap size={16} className="pointer-events-none absolute left-3 text-slate-500" aria-hidden="true" />
-                        <select
-                          id="profile-settings-major"
-                          className="h-11 w-full min-w-0 cursor-pointer appearance-none rounded-xl border border-slate-300 bg-white py-2 pr-9 pl-9 text-xs text-slate-900 transition-colors focus:border-[#ec008c] focus:outline-none focus:ring-3 focus:ring-[#ec008c]/15 disabled:bg-slate-50 disabled:text-slate-500"
-                          value={!settingsFaculty || availableMajors.length === 0 ? '' : settingsMajor}
-                          onChange={(e) => setSettingsMajor(e.target.value)}
-                          disabled={isMajorDisabled}
-                        >
-                          <option value="">
-                            {!settingsFaculty
-                              ? 'กรุณาเลือกคณะก่อน'
-                              : availableMajors.length === 0
-                                ? 'ไม่พบสาขาวิชาสำหรับคณะนี้'
-                                : 'เลือกสาขาวิชา'}
-                          </option>
-                          {hasLegacyMajor && (
-                            <option value={settingsMajor}>{settingsMajor}</option>
-                          )}
-                          {availableMajors.map((major) => (
-                            <option key={major} value={major}>
-                              {major}
-                            </option>
-                          ))}
-                        </select>
-                        <ChevronDown size={16} className="pointer-events-none absolute right-3 text-slate-400" aria-hidden="true" />
-                      </div>
-                    </div>
+                    <SpuSelect
+                      id="profile-settings-major"
+                      label="สาขาวิชา"
+                      icon={GraduationCap}
+                      placeholder={majorPlaceholder}
+                      value={!settingsFaculty || availableMajors.length === 0 ? '' : settingsMajor}
+                      onValueChange={(nextValue) => setSettingsMajor(nextValue)}
+                      options={[
+                        ...(hasLegacyMajor ? [{ value: settingsMajor, label: settingsMajor }] : []),
+                        ...availableMajors.map((major) => ({ value: major, label: major })),
+                      ]}
+                      isDisabled={isMajorDisabled}
+                      labelClassName="text-xs font-bold text-slate-700"
+                      triggerClassName="bg-white border border-slate-300 text-xs"
+                    />
                   );
                 })()}
 
