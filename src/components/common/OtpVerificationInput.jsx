@@ -33,17 +33,20 @@ export default function OtpVerificationInput({
     }
   }, [value]);
 
-  const handleChange = (nextValue) => {
-    const digitsOnly = String(nextValue || '').replace(/\D/g, '').slice(0, 6);
-    onChange(digitsOnly);
-  };
-
   const handleComplete = (completedCode) => {
     const digitsOnly = String(completedCode || '').replace(/\D/g, '').slice(0, 6);
     if (!/^\d{6}$/.test(digitsOnly)) return;
     if (isDisabled || isVerifying || lastAutoSubmittedCode.current === digitsOnly) return;
     lastAutoSubmittedCode.current = digitsOnly;
     onComplete?.(digitsOnly);
+  };
+
+  const handleChange = (nextValue) => {
+    const digitsOnly = String(nextValue || '').replace(/\D/g, '').slice(0, 6);
+    onChange(digitsOnly);
+    if (digitsOnly.length === 6) {
+      handleComplete(digitsOnly);
+    }
   };
 
   const canResend = countdownSeconds <= 0 && !isDisabled && !isVerifying && !isResending;
