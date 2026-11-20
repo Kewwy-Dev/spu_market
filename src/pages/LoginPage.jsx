@@ -4,7 +4,7 @@ import OtpVerificationInput, { OTP_RESEND_COOLDOWN_SECONDS } from '../components
 import { getSupabaseConfigError, supabase } from '../lib/supabase';
 import { isAllowedSpuEmail } from '../utils/validation';
 
-export default function LoginPage({ onBack, authError = '', onClearAuthError }) {
+export default function LoginPage({ onBack, authError = '', onClearAuthError, onLoginSuccess }) {
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
@@ -44,12 +44,15 @@ export default function LoginPage({ onBack, authError = '', onClearAuthError }) 
     setError('');
     setIsLoading(true);
     try {
-      const { error: verifyError } = await supabase.auth.verifyOtp({
+      const { data, error: verifyError } = await supabase.auth.verifyOtp({
         email: trimmedEmail,
         token: trimmedOtp,
         type: 'email',
       });
       if (verifyError) throw verifyError;
+      if (data?.user) {
+        onLoginSuccess?.(data.user);
+      }
     } catch (verifyError) {
       setError(verifyError.message || 'รหัส OTP ไม่ถูกต้องหรือหมดอายุ กรุณาลองอีกครั้ง');
     } finally {
