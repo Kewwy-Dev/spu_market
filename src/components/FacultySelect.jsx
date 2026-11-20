@@ -9,7 +9,7 @@ export default function FacultySelect({ id = 'faculty-select', value, onChange, 
     <div className={`flex flex-col gap-[5px] ${error ? 'has-error' : ''}`}>
       <div className="flex items-center justify-between">
         <label htmlFor={id} className="text-[0.82rem] font-semibold text-slate-800">
-          คณะ / วิทยาลัย {required && <span className="font-bold text-spu-pink">*</span>}
+          คณะ {required && <span className="font-bold text-spu-pink">*</span>}
         </label>
       </div>
       <div
@@ -29,7 +29,7 @@ export default function FacultySelect({ id = 'faculty-select', value, onChange, 
           onChange={onChange}
           className="h-11 w-full cursor-pointer appearance-none border-0 bg-transparent pr-[34px] pl-[38px] text-[0.84rem] text-slate-900 outline-none focus:outline-none"
         >
-          <option value="">เลือกคณะ / วิทยาลัย</option>
+          <option value="">เลือกคณะที่เรียน</option>
           {hasLegacyValue && <option value={value}>{value}</option>}
           {FACULTIES.map((faculty) => (
             <option key={faculty.id} value={faculty.name}>{faculty.name}</option>
