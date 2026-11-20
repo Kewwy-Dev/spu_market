@@ -861,7 +861,10 @@ export default function App() {
 
   const handleLoginSuccess = (authUser) => {
     setCurrentUser(mapAuthUser(authUser));
-    navigateToProfile(authUser.id);
+    const hasPendingAction = typeof window !== 'undefined' && Boolean(window.localStorage.getItem(PENDING_AUTH_ACTION_KEY));
+    if (!hasPendingAction) {
+      navigateHome();
+    }
   };
 
   const handleLogout = async ({ skipConfirm = false } = {}) => {
