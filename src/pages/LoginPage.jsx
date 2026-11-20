@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { ArrowLeft, KeyRound, Mail, MailCheck, ShieldCheck, Loader2 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { ArrowLeft, Mail, ShieldCheck, Loader2 } from 'lucide-react';
+import OtpVerificationInput, { OTP_RESEND_COOLDOWN_SECONDS } from '../components/common/OtpVerificationInput';
 import { getSupabaseConfigError, supabase } from '../lib/supabase';
 import { isAllowedSpuEmail } from '../utils/validation';
 
@@ -7,9 +8,18 @@ export default function LoginPage({ onBack, authError = '', onClearAuthError }) 
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
+  const [resendCountdown, setResendCountdown] = useState(0);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (resendCountdown <= 0) return undefined;
+    const timer = window.setInterval(() => {
+      setResendCountdown((prev) => (prev > 1 ? prev - 1 : 0));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [resendCountdown]);
 
   const sendOtp = async (targetEmail) => {
     const { error: authError } = await supabase.auth.signInWithOtp({
@@ -17,6 +27,34 @@ export default function LoginPage({ onBack, authError = '', onClearAuthError }) 
       options: { shouldCreateUser: false },
     });
     if (authError) throw authError;
+  };
+
+  const verifyOtpCode = async (codeToVerify) => {
+    const trimmedEmail = email.trim().toLowerCase();
+    const trimmedOtp = String(codeToVerify || '').trim();
+    if (!/^\d{6}$/.test(trimmedOtp)) {
+      setError('กรุณากรอกรหัส OTP ตัวเลข 6 หลักให้ครบถ้วน');
+      return;
+    }
+    if (!supabase) {
+      setError(getSupabaseConfigError());
+      return;
+    }
+
+    setError('');
+    setIsLoading(true);
+    try {
+      const { error: verifyError } = await supabase.auth.verifyOtp({
+        email: trimmedEmail,
+        token: trimmedOtp,
+        type: 'email',
+      });
+      if (verifyError) throw verifyError;
+    } catch (verifyError) {
+      setError(verifyError.message || 'รหัส OTP ไม่ถูกต้องหรือหมดอายุ กรุณาลองอีกครั้ง');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSubmit = async (event) => {
@@ -37,7 +75,8 @@ export default function LoginPage({ onBack, authError = '', onClearAuthError }) 
         await sendOtp(trimmedEmail);
         setOtp('');
         setOtpSent(true);
-        setNotice(`ส่งรหัส OTP 6 หลักไปที่ ${trimmedEmail} แล้ว กรุณากรอกรหัสเพื่อเข้าสู่ระบบ`);
+        setResendCountdown(OTP_RESEND_COOLDOWN_SECONDS);
+        setNotice('ส่งรหัส OTP แล้ว');
       } catch (authError) {
         setError(authError.message || 'ส่งรหัส OTP ไม่สำเร็จ กรุณาลองอีกครั้ง');
       } finally {
@@ -46,27 +85,11 @@ export default function LoginPage({ onBack, authError = '', onClearAuthError }) 
       return;
     }
 
-    const trimmedOtp = otp.trim();
-    if (trimmedOtp.length !== 6) {
-      return setError('กรุณากรอกรหัส OTP 6 หลักให้ครบถ้วน');
-    }
-
-    setIsLoading(true);
-    try {
-      const { error: verifyError } = await supabase.auth.verifyOtp({
-        email: trimmedEmail,
-        token: trimmedOtp,
-        type: 'email',
-      });
-      if (verifyError) throw verifyError;
-    } catch (verifyError) {
-      setError(verifyError.message || 'รหัส OTP ไม่ถูกต้องหรือหมดอายุ กรุณาลองอีกครั้ง');
-    } finally {
-      setIsLoading(false);
-    }
+    await verifyOtpCode(otp);
   };
 
   const handleResendOtp = async () => {
+    if (resendCountdown > 0 || isLoading) return;
     setError('');
     setNotice('');
     onClearAuthError?.();
@@ -75,7 +98,9 @@ export default function LoginPage({ onBack, authError = '', onClearAuthError }) 
     setIsLoading(true);
     try {
       await sendOtp(trimmedEmail);
-      setNotice(`ส่งรหัส OTP ใหม่ไปที่ ${trimmedEmail} แล้ว`);
+      setOtp('');
+      setResendCountdown(OTP_RESEND_COOLDOWN_SECONDS);
+      setNotice('ส่งรหัส OTP ใหม่แล้ว');
     } catch (authError) {
       setError(authError.message || 'ส่งรหัส OTP ไม่สำเร็จ กรุณาลองอีกครั้ง');
     } finally {
@@ -187,17 +212,18 @@ export default function LoginPage({ onBack, authError = '', onClearAuthError }) 
             </div>
 
             {otpSent && (
-              <div className="flex flex-col gap-[5px] animate-[fadeIn_0.2s_ease]">
+              <div className="flex flex-col gap-2 animate-[fadeIn_0.2s_ease]">
                 <div className="flex items-center justify-between">
-                  <label htmlFor="login-otp" className="text-[0.82rem] font-semibold text-slate-800">
+                  <span className="text-[0.82rem] font-semibold text-slate-800">
                     รหัส OTP 6 หลัก <span className="font-bold text-spu-pink">*</span>
-                  </label>
+                  </span>
                   <button
                     type="button"
                     disabled={isLoading}
                     onClick={() => {
                       setOtpSent(false);
                       setOtp('');
+                      setResendCountdown(0);
                       setError('');
                       setNotice('');
                     }}
@@ -206,39 +232,22 @@ export default function LoginPage({ onBack, authError = '', onClearAuthError }) 
                     เปลี่ยนอีเมล
                   </button>
                 </div>
-                <div className="group relative flex items-center overflow-hidden rounded-xl border-[1.5px] border-slate-200 bg-slate-50 transition-all duration-200 focus-within:border-spu-pink focus-within:bg-white focus-within:ring-[3px] focus-within:ring-spu-pink/12">
-                  <div
-                    className="pointer-events-none absolute left-3 flex items-center text-slate-400 transition-colors duration-200 group-focus-within:text-spu-pink"
-                    aria-hidden="true"
-                  >
-                    <KeyRound size={18} strokeWidth={2} />
-                  </div>
-                  <input
-                    id="login-otp"
-                    type="text"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    maxLength={6}
-                    autoFocus
+                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 px-3 py-4">
+                  <OtpVerificationInput
+                    email={email.trim().toLowerCase()}
+                    noticeTitle={notice || 'ส่งรหัส OTP แล้ว'}
                     value={otp}
-                    onChange={(event) => {
-                      setOtp(event.target.value.replace(/\D/g, '').slice(0, 6));
+                    onChange={(nextOtp) => {
+                      setOtp(nextOtp);
                       setError('');
                     }}
-                    placeholder="กรอกรหัส 6 หลัก"
-                    className="h-11 w-full border-0 bg-transparent pr-3 pl-[38px] text-center font-mono text-base font-bold tracking-[0.45em] text-slate-900 outline-none focus:outline-none placeholder:font-sans placeholder:text-[0.84rem] placeholder:font-normal placeholder:tracking-normal placeholder:text-slate-400"
-                    required
+                    onComplete={verifyOtpCode}
+                    onResend={handleResendOtp}
+                    countdownSeconds={resendCountdown}
+                    isInvalid={Boolean(displayError)}
+                    isVerifying={isLoading}
+                    isResending={isLoading}
                   />
-                </div>
-                <div className="flex justify-end pt-0.5">
-                  <button
-                    type="button"
-                    disabled={isLoading}
-                    onClick={handleResendOtp}
-                    className="text-[0.72rem] font-semibold text-slate-500 hover:text-spu-pink disabled:opacity-60"
-                  >
-                    ไม่ได้รับรหัส? ส่งรหัสอีกครั้ง
-                  </button>
                 </div>
               </div>
             )}
@@ -248,39 +257,23 @@ export default function LoginPage({ onBack, authError = '', onClearAuthError }) 
                 <span>{displayError}</span>
               </div>
             )}
-            {notice && (
-              <div
-                className="flex items-start gap-3 rounded-xl border border-emerald-200/90 bg-gradient-to-br from-emerald-50 to-teal-50/70 px-3.5 py-3 text-left shadow-[0_4px_14px_rgba(16,185,129,0.08)] animate-[fadeIn_0.2s_ease]"
-                role="status"
-              >
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-600">
-                  <MailCheck size={18} strokeWidth={2.2} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[0.8rem] font-bold text-emerald-900">
-                    ส่งรหัส OTP ทางอีเมลแล้ว
-                  </p>
-                  <p className="mt-0.5 text-[0.72rem] leading-relaxed text-emerald-700">
-                    {notice}
-                  </p>
-                </div>
-              </div>
-            )}
 
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="mt-1 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-gradient-to-br from-[#e6007e] to-[#d81b60] text-[0.95rem] font-bold text-white shadow-[0_8px_22px_rgba(230,0,126,0.35)] transition-all duration-200 hover:-translate-y-px hover:from-[#ee1188] hover:to-[#e0236a] hover:shadow-[0_10px_26px_rgba(230,0,126,0.45)] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-75"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 size={18} className="animate-spin" />
-                  <span>{otpSent ? 'กำลังตรวจสอบรหัส...' : 'กำลังส่งรหัส OTP...'}</span>
-                </>
-              ) : (
-                <span>{otpSent ? 'ยืนยันรหัส OTP' : 'ส่งรหัส OTP'}</span>
-              )}
-            </button>
+            {!otpSent && (
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="mt-1 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-gradient-to-br from-[#e6007e] to-[#d81b60] text-[0.95rem] font-bold text-white shadow-[0_8px_22px_rgba(230,0,126,0.35)] transition-all duration-200 hover:-translate-y-px hover:from-[#ee1188] hover:to-[#e0236a] hover:shadow-[0_10px_26px_rgba(230,0,126,0.45)] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-75"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" />
+                    <span>กำลังส่งรหัส OTP...</span>
+                  </>
+                ) : (
+                  <span>ส่งรหัส OTP</span>
+                )}
+              </button>
+            )}
 
             <div className="my-0.5 flex items-center gap-2.5">
               <span className="h-px flex-1 bg-slate-200" />

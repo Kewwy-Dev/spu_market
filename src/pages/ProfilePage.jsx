@@ -11,6 +11,7 @@ import {
   GraduationCap,
   Settings,
   Store,
+  ChevronDown,
   ChevronRight,
   CheckCircle2,
   Clock,
@@ -636,7 +637,6 @@ export default function ProfilePage({
               }`}
               onClick={() => setActiveActivityTab('pending')}
             >
-              <Clock size={13} />
               <span>กำลังนัดรับ ({buyerActivityCounts.pending})</span>
             </button>
             <button
@@ -648,7 +648,6 @@ export default function ProfilePage({
               }`}
               onClick={() => setActiveActivityTab('success')}
             >
-              <CheckCircle2 size={13} />
               <span>สำเร็จแล้ว ({buyerActivityCounts.success})</span>
             </button>
             <button
@@ -1156,7 +1155,7 @@ export default function ProfilePage({
                   <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                     <div className="flex flex-col gap-1">
                       <div className="flex items-baseline justify-between gap-2 text-xs">
-                        <span className="shrink-0 font-semibold text-slate-500">อีเมล SPU</span>
+                        <span className="shrink-0 font-semibold text-slate-500">อีเมล</span>
                         <strong className="truncate text-right font-bold text-slate-900">
                           {currentUser.email || '—'}
                         </strong>
@@ -1180,14 +1179,14 @@ export default function ProfilePage({
 
                 <div className="flex flex-col gap-1.5">
                   <label htmlFor="profile-settings-display-name" className="text-xs font-bold text-slate-700">
-                    Display Name <span className="text-[#ec008c]">*</span>
+                    ชื่อ-นามสกุล <span className="text-[#ec008c]">*</span>
                   </label>
                   <div className="relative flex items-center">
                     <User size={16} className="pointer-events-none absolute left-3 text-slate-500" aria-hidden="true" />
                     <input
                       id="profile-settings-display-name"
                       type="text"
-                      className="min-h-10.5 w-full rounded-xl border border-slate-300 bg-white py-2 pr-3 pl-9 text-xs text-slate-900 transition-colors focus:border-[#ec008c] focus:outline-none focus:ring-3 focus:ring-[#ec008c]/15 disabled:bg-slate-50 disabled:text-slate-500"
+                      className="h-11 w-full rounded-xl border border-slate-300 bg-white py-2 pr-3 pl-9 text-xs text-slate-900 transition-colors focus:border-[#ec008c] focus:outline-none focus:ring-3 focus:ring-[#ec008c]/15 disabled:bg-slate-50 disabled:text-slate-500"
                       value={settingsDisplayName}
                       onChange={(e) => setSettingsDisplayName(e.target.value)}
                       placeholder="ชื่อที่แสดงในตลาด SPU"
@@ -1200,18 +1199,18 @@ export default function ProfilePage({
 
                 <div className="flex flex-col gap-1.5">
                   <label htmlFor="profile-settings-faculty" className="text-xs font-bold text-slate-700">
-                    คณะ / วิทยาลัย
+                    คณะ
                   </label>
                   <div className="relative flex items-center">
                     <Landmark size={16} className="pointer-events-none absolute left-3 text-slate-500" aria-hidden="true" />
                     <select
                       id="profile-settings-faculty"
-                      className="min-h-10.5 w-full cursor-pointer rounded-xl border border-slate-300 bg-white py-2 pr-3 pl-9 text-xs text-slate-900 transition-colors focus:border-[#ec008c] focus:outline-none focus:ring-3 focus:ring-[#ec008c]/15 disabled:bg-slate-50 disabled:text-slate-500"
+                      className="h-11 w-full min-w-0 cursor-pointer appearance-none rounded-xl border border-slate-300 bg-white py-2 pr-9 pl-9 text-xs text-slate-900 transition-colors focus:border-[#ec008c] focus:outline-none focus:ring-3 focus:ring-[#ec008c]/15 disabled:bg-slate-50 disabled:text-slate-500"
                       value={settingsFaculty}
                       onChange={handleSettingsFacultyChange}
                       disabled={settingsSaving}
                     >
-                      <option value="">เลือกคณะ / วิทยาลัย</option>
+                      <option value="">เลือกคณะที่เรียน</option>
                       {settingsFaculty && !FACULTIES.some((f) => f.name === settingsFaculty) && (
                         <option value={settingsFaculty}>{settingsFaculty}</option>
                       )}
@@ -1221,6 +1220,7 @@ export default function ProfilePage({
                         </option>
                       ))}
                     </select>
+                    <ChevronDown size={16} className="pointer-events-none absolute right-3 text-slate-400" aria-hidden="true" />
                   </div>
                 </div>
 
@@ -1239,7 +1239,7 @@ export default function ProfilePage({
                         <GraduationCap size={16} className="pointer-events-none absolute left-3 text-slate-500" aria-hidden="true" />
                         <select
                           id="profile-settings-major"
-                          className="min-h-10.5 w-full cursor-pointer rounded-xl border border-slate-300 bg-white py-2 pr-3 pl-9 text-xs text-slate-900 transition-colors focus:border-[#ec008c] focus:outline-none focus:ring-3 focus:ring-[#ec008c]/15 disabled:bg-slate-50 disabled:text-slate-500"
+                          className="h-11 w-full min-w-0 cursor-pointer appearance-none rounded-xl border border-slate-300 bg-white py-2 pr-9 pl-9 text-xs text-slate-900 transition-colors focus:border-[#ec008c] focus:outline-none focus:ring-3 focus:ring-[#ec008c]/15 disabled:bg-slate-50 disabled:text-slate-500"
                           value={!settingsFaculty || availableMajors.length === 0 ? '' : settingsMajor}
                           onChange={(e) => setSettingsMajor(e.target.value)}
                           disabled={isMajorDisabled}
@@ -1260,6 +1260,7 @@ export default function ProfilePage({
                             </option>
                           ))}
                         </select>
+                        <ChevronDown size={16} className="pointer-events-none absolute right-3 text-slate-400" aria-hidden="true" />
                       </div>
                     </div>
                   );
@@ -1274,7 +1275,7 @@ export default function ProfilePage({
                     <input
                       id="profile-settings-contact"
                       type="text"
-                      className="min-h-10.5 w-full rounded-xl border border-slate-300 bg-white py-2 pr-3 pl-9 text-xs text-slate-900 transition-colors focus:border-[#ec008c] focus:outline-none focus:ring-3 focus:ring-[#ec008c]/15 disabled:bg-slate-50 disabled:text-slate-500"
+                      className="h-11 w-full rounded-xl border border-slate-300 bg-white py-2 pr-3 pl-9 text-xs text-slate-900 transition-colors focus:border-[#ec008c] focus:outline-none focus:ring-3 focus:ring-[#ec008c]/15 disabled:bg-slate-50 disabled:text-slate-500"
                       value={settingsContact}
                       onChange={(e) => setSettingsContact(e.target.value)}
                       placeholder="เช่น @spu_line หรือ 08x-xxx-xxxx"

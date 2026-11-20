@@ -124,6 +124,7 @@ export default function App() {
     const profileMatch = window.location.pathname.match(/^\/profile\/([^/]+)\/?$/);
     const chatMatch = window.location.pathname.match(/^\/chat(?:\/([^/]+))?\/?$/);
     if (/^\/login\/?$/.test(window.location.pathname)) return { tab: 'login', productId: null, sellerId: null, profileId: null, chatId: null };
+    if (/^\/register\/?$/.test(window.location.pathname)) return { tab: 'register', productId: null, sellerId: null, profileId: null, chatId: null };
     if (/^\/cart\/?$/.test(window.location.pathname)) return { tab: 'cart', productId: null, sellerId: null, profileId: null, chatId: null };
     if (sellerMatch) return { tab: 'seller', productId: null, sellerId: decodeURIComponent(sellerMatch[1]), profileId: null, chatId: null };
     if (profileMatch) return { tab: 'profile', productId: null, sellerId: null, profileId: decodeURIComponent(profileMatch[1]), chatId: null };
@@ -436,11 +437,14 @@ export default function App() {
         if (pendingAction.type === 'tab') {
           const targetTab = pendingAction.tab;
           if (targetTab === 'register') {
+            if (!isSellerUser && window.location.pathname !== '/register') window.history.pushState({}, '', '/register');
             setActiveTab(isSellerUser ? 'seller' : 'register');
           } else if (targetTab === 'seller') {
+            if (!isSellerUser && window.location.pathname !== '/register') window.history.pushState({}, '', '/register');
             setActiveTab(isSellerUser ? 'seller' : 'register');
           } else if (targetTab === 'add_product') {
             setEditingProduct(null);
+            if (!isSellerUser && window.location.pathname !== '/register') window.history.pushState({}, '', '/register');
             setActiveTab(isSellerUser ? 'add_product' : 'register');
           } else if (targetTab === 'chat') {
             window.history.pushState({}, '', '/chat');
@@ -654,6 +658,7 @@ export default function App() {
             } catch (registrationError) {
               console.error('Could not complete seller registration:', registrationError.message);
               if (isMounted && syncId === userSyncId) {
+                if (window.location.pathname !== '/register') window.history.pushState({}, '', '/register');
                 setActiveTab('register');
                 registrationCompletedRedirect = true;
               }
@@ -876,6 +881,7 @@ export default function App() {
     } else if (currentUser.role?.toLowerCase() === 'seller') {
       setActiveTab('seller');
     } else {
+      if (window.location.pathname !== '/register') window.history.pushState({}, '', '/register');
       setActiveTab('register');
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1071,6 +1077,7 @@ export default function App() {
                 navigateToLogin({ type: 'tab', tab: 'register' });
                 return;
               }
+              if (window.location.pathname !== '/register') window.history.pushState({}, '', '/register');
               setActiveTab('register');
             }}
             onNavigateToLogin={navigateToLogin}

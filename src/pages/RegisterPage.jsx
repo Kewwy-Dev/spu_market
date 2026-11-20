@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { User, CreditCard, Mail, MessageSquare, X, ShieldCheck, Loader2 } from 'lucide-react';
+import OtpVerificationInput, { OTP_RESEND_COOLDOWN_SECONDS } from '../components/common/OtpVerificationInput';
 import { getSupabaseConfigError, supabase } from '../lib/supabase';
 import Header from '../components/Header';
 import HeroBanner from '../components/HeroBanner';
@@ -31,12 +32,12 @@ export default function RegisterPage({ currentUser, onBack }) {
   const [isExpiredLink, setIsExpiredLink] = useState(linkExpired);
   const [memberType, setMemberType] = useState(pendingRegistration?.member_type || currentUser?.memberType || 'student');
   const [formData, setFormData] = useState({
-    fullName: pendingRegistration?.display_name || currentUser?.displayName || '',
+    fullName: pendingRegistration?.display_name || '',
     studentId: pendingRegistration?.student_id || currentUser?.studentId || '',
     faculty: pendingRegistration?.faculty || currentUser?.faculty || '',
     major: pendingRegistration?.major || currentUser?.major || '',
     email: pendingRegistration?.email || currentUser?.email || '',
-    contact: pendingRegistration?.contact || currentUser?.contact || '',
+    contact: (pendingRegistration?.contact || currentUser?.contact || '').replace(/[\u0E00-\u0E7F]/g, ''),
     consent1: pendingRegistration?.identity_check_consent === true,
     consent2: pendingRegistration?.terms_accepted === true,
   });
@@ -44,8 +45,17 @@ export default function RegisterPage({ currentUser, onBack }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isOtpModalOpen, setIsOtpModalOpen] = useState(linkExpired);
   const [otpCode, setOtpCode] = useState('');
+  const [resendCountdown, setResendCountdown] = useState(0);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [registrationMessage, setRegistrationMessage] = useState(linkExpired ? 'รหัสหรือลิงก์ก่อนหน้าหมดอายุ กรุณาส่งรหัส OTP ใหม่' : '');
+
+  useEffect(() => {
+    if (resendCountdown <= 0) return undefined;
+    const timer = window.setInterval(() => {
+      setResendCountdown((prev) => (prev > 1 ? prev - 1 : 0));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [resendCountdown]);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -56,12 +66,11 @@ export default function RegisterPage({ currentUser, onBack }) {
       const nextMajor = nextMajors.length === 0 || nextMajors.includes(candidateMajor) ? candidateMajor : '';
       return {
         ...previous,
-        fullName: previous.fullName || currentUser.displayName || '',
         studentId: previous.studentId || currentUser.studentId || '',
         faculty: nextFaculty,
         major: nextMajor,
         email: previous.email || currentUser.email || '',
-        contact: previous.contact || currentUser.contact || '',
+        contact: previous.contact || (currentUser.contact || '').replace(/[\u0E00-\u0E7F]/g, ''),
       };
     });
     if (!pendingRegistration && !formData.studentId) setMemberType(currentUser.memberType || 'student');
@@ -141,6 +150,7 @@ export default function RegisterPage({ currentUser, onBack }) {
     try {
       await requestOtpEmail();
       setOtpCode('');
+      setResendCountdown(OTP_RESEND_COOLDOWN_SECONDS);
       setIsOtpModalOpen(true);
     } catch (error) {
       setRegistrationMessage(error.message || 'ส่งรหัส OTP ไม่สำเร็จ กรุณาลองอีกครั้ง');
@@ -150,11 +160,13 @@ export default function RegisterPage({ currentUser, onBack }) {
   };
 
   const handleResendOtp = async () => {
+    if (resendCountdown > 0 || isSubmitting || isVerifyingOtp) return;
     setRegistrationMessage('');
     setIsSubmitting(true);
     try {
       await requestOtpEmail();
       setOtpCode('');
+      setResendCountdown(OTP_RESEND_COOLDOWN_SECONDS);
       setRegistrationMessage('ส่งรหัส OTP ใหม่แล้ว');
     } catch (error) {
       setRegistrationMessage(error.message || 'ส่งรหัส OTP ไม่สำเร็จ กรุณาลองอีกครั้ง');
@@ -163,12 +175,11 @@ export default function RegisterPage({ currentUser, onBack }) {
     }
   };
 
-  const handleVerifyOtp = async (event) => {
-    event.preventDefault();
+  const verifyOtpCode = async (codeToVerify) => {
     setRegistrationMessage('');
-    const trimmedOtp = otpCode.trim();
-    if (trimmedOtp.length !== 6) {
-      setRegistrationMessage('กรุณากรอกรหัส OTP 6 หลักให้ครบถ้วน');
+    const trimmedOtp = String(codeToVerify || '').trim();
+    if (!/^\d{6}$/.test(trimmedOtp)) {
+      setRegistrationMessage('กรุณากรอกรหัส OTP ตัวเลข 6 หลักให้ครบถ้วน');
       return;
     }
     if (!supabase) {
@@ -192,6 +203,11 @@ export default function RegisterPage({ currentUser, onBack }) {
     }
   };
 
+  const handleVerifyOtp = async (event) => {
+    event.preventDefault();
+    await verifyOtpCode(otpCode);
+  };
+
   return (
     <div className="flex min-h-[calc(100dvh-64px)] w-full flex-col bg-white sm:bg-slate-50/70">
       <Header onBack={onBack} />
@@ -213,8 +229,9 @@ export default function RegisterPage({ currentUser, onBack }) {
           />
           <FormField
             id="fullName" label="ชื่อ-สกุล" required icon={User}
-            value={formData.fullName} onChange={(event) => updateField('fullName', event.target.value)}
-            placeholder="กรอกชื่อและนามสกุล" error={errors.fullName}
+            value={formData.fullName}
+            onChange={(event) => updateField('fullName', event.target.value.replace(/[^A-Za-z\u0E00-\u0E7F\s]/g, ''))}
+            placeholder="กรอกชื่อและนามสกุล (ภาษาไทยหรืออังกฤษ)" error={errors.fullName}
           />
           <FacultySelect id="faculty" value={formData.faculty} onChange={handleFacultyChange} error={errors.faculty} required />
           <MajorSelect id="major" faculty={formData.faculty} value={formData.major} onChange={(event) => updateField('major', event.target.value)} error={errors.major} required />
@@ -226,8 +243,9 @@ export default function RegisterPage({ currentUser, onBack }) {
           />
           <FormField
             id="contact" label="ช่องทางติดต่อ" required icon={MessageSquare}
-            value={formData.contact} onChange={(event) => updateField('contact', event.target.value)}
-            placeholder="LINE ID หรือเบอร์โทรศัพท์" helperText="ใช้ติดต่อเรื่องการซื้อขายและนัดรับสินค้า" error={errors.contact}
+            value={formData.contact}
+            onChange={(event) => updateField('contact', event.target.value.replace(/[\u0E00-\u0E7F]/g, ''))}
+            placeholder="LINE ID หรือเบอร์โทรศัพท์ (ห้ามภาษาไทย)" helperText="ใช้ติดต่อเรื่องการซื้อขายและนัดรับสินค้า (ห้ามพิมพ์ภาษาไทย)" error={errors.contact}
           />
           <PdpaConsent
             consent1={formData.consent1} consent2={formData.consent2}
@@ -259,61 +277,35 @@ export default function RegisterPage({ currentUser, onBack }) {
             <div className="mx-auto mb-3 grid h-[52px] w-[52px] place-items-center rounded-2xl bg-spu-pink-light text-spu-pink">
               <ShieldCheck size={23} />
             </div>
-            <h2 id="seller-otp-title" className="text-base font-bold text-slate-900">ยืนยันรหัส OTP 6 หลัก</h2>
-            <p className="mt-2 mb-4 break-words text-[0.75rem] text-slate-500">
-              {isExpiredLink ? 'รหัสหรือลิงก์ก่อนหน้าหมดอายุแล้ว' : 'เราส่งรหัส OTP 6 หลักไปที่'}{' '}
-              <strong className="text-slate-700">{formData.email}</strong>{' '}
-              กรอกรหัสเพื่อยืนยันอีเมลและสมัครเป็นผู้ขายให้เสร็จสมบูรณ์
-            </p>
+            <h2 id="seller-otp-title" className="mb-3 text-base font-bold text-slate-900">ยืนยันรหัส OTP 6 หลัก</h2>
             <form onSubmit={handleVerifyOtp} className="flex flex-col gap-3">
-              <input
-                type="text"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                maxLength={6}
-                autoFocus
+              <OtpVerificationInput
+                email={formData.email.trim().toLowerCase()}
+                noticeTitle={
+                  isExpiredLink
+                    ? 'รหัสก่อนหน้าหมดอายุ กรุณาส่งใหม่'
+                    : registrationMessage.startsWith('ส่งรหัส OTP ใหม่')
+                      ? 'ส่งรหัส OTP ใหม่แล้ว'
+                      : 'ส่งรหัส OTP แล้ว'
+                }
                 value={otpCode}
-                onChange={(event) => {
-                  setOtpCode(event.target.value.replace(/\D/g, '').slice(0, 6));
+                onChange={(nextOtp) => {
+                  setOtpCode(nextOtp);
                   setRegistrationMessage('');
                 }}
-                placeholder="กรอกรหัส 6 หลัก"
-                className="h-12 w-full rounded-xl border-[1.5px] border-slate-200 bg-slate-50 px-3 text-center font-mono text-lg font-bold tracking-[0.45em] text-slate-900 outline-none transition-all focus:border-spu-pink focus:bg-white focus:ring-[3px] focus:ring-spu-pink/12 placeholder:font-sans placeholder:text-sm placeholder:font-normal placeholder:tracking-normal placeholder:text-slate-400"
-                required
+                onComplete={verifyOtpCode}
+                onResend={handleResendOtp}
+                countdownSeconds={resendCountdown}
+                isInvalid={Boolean(registrationMessage && !registrationMessage.startsWith('ส่งรหัส OTP ใหม่'))}
+                isVerifying={isVerifyingOtp}
+                isResending={isSubmitting}
               />
-              {registrationMessage && (
-                <p
-                  className={`text-center text-[0.72rem] font-medium ${
-                    registrationMessage.startsWith('ส่งรหัส OTP ใหม่') ? 'text-emerald-700' : 'text-rose-700'
-                  }`}
-                  role={registrationMessage.startsWith('ส่งรหัส OTP ใหม่') ? 'status' : 'alert'}
-                >
+              {registrationMessage && !registrationMessage.startsWith('ส่งรหัส OTP ใหม่') && (
+                <p className="text-center text-[0.72rem] font-medium text-rose-700" role="alert">
                   {registrationMessage}
                 </p>
               )}
-              <button
-                type="submit"
-                disabled={isVerifyingOtp || isSubmitting}
-                className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-spu-pink text-[0.88rem] font-bold text-white shadow-[0_6px_18px_rgba(230,0,126,0.28)] transition-all hover:bg-spu-pink-hover disabled:cursor-not-allowed disabled:opacity-65"
-              >
-                {isVerifyingOtp ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin" />
-                    <span>กำลังตรวจสอบรหัส...</span>
-                  </>
-                ) : (
-                  <span>ยืนยันรหัส OTP</span>
-                )}
-              </button>
             </form>
-            <button
-              type="button"
-              className="mt-3 inline-flex items-center gap-1.5 text-[0.72rem] font-bold text-spu-pink disabled:cursor-wait disabled:opacity-65"
-              disabled={isSubmitting || isVerifyingOtp}
-              onClick={handleResendOtp}
-            >
-              {isSubmitting ? <><Loader2 size={15} className="animate-spin" /> กำลังส่ง...</> : 'ส่งรหัสอีกครั้ง'}
-            </button>
           </section>
         </div>
       )}
