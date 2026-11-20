@@ -678,6 +678,9 @@ export default function App() {
             const pendingAction = consumePendingAuthAction();
             if (pendingAction) {
               void executePendingAuthAction(pendingAction, mappedUser);
+            } else if (window.location.pathname === '/login') {
+              window.history.replaceState({}, '', '/home');
+              setActiveTab('home');
             }
           }
         }
