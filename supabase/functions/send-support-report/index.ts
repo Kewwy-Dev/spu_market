@@ -153,6 +153,28 @@ function buildSupportFlexMessage(report: SupportReport, { isAdminCopy }: { isAdm
     };
   }
 
+  if (isAdminCopy) {
+    contents.footer = {
+      type: 'box',
+      layout: 'vertical',
+      paddingAll: '12px',
+      contents: [
+        {
+          type: 'button',
+          style: 'primary',
+          color: '#059669',
+          height: 'sm',
+          action: {
+            type: 'postback',
+            label: 'รับเรื่อง',
+            data: `action=ack_support&reportId=${report.id}`,
+            displayText: `รับเรื่อง #${shortId}`,
+          },
+        },
+      ],
+    };
+  }
+
   return {
     type: 'flex',
     altText: `[แจ้งปัญหา: ${report.category}] ${report.description.slice(0, 80)}`,
