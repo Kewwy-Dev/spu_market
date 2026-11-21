@@ -679,7 +679,7 @@ export default function ChatRoomPage({ conversationId, currentUser, chatPartner,
       >
         <SkeletonReveal
           loading={isLoadingMessages}
-          className="chat-message-skeleton-wrap flex flex-col gap-3"
+          className="chat-message-skeleton-wrap"
           skeleton={
             <div className="chat-message-skeleton" aria-hidden="true">
               {[0, 1, 2, 3].map((item) => (
@@ -691,6 +691,7 @@ export default function ChatRoomPage({ conversationId, currentUser, chatPartner,
             </div>
           }
         >
+          <div className="flex flex-col gap-3">
           {messages.length === 0 && (
             <div className="mx-auto my-2.5 block w-fit max-w-[calc(100%-16px)] rounded-[20px] bg-slate-200 px-3.5 py-1.5 text-center text-[0.68rem] leading-[1.4] text-slate-500">
               เริ่มต้นบทสนทนาเกี่ยวกับสินค้านี้ได้เลย
@@ -833,6 +834,7 @@ export default function ChatRoomPage({ conversationId, currentUser, chatPartner,
               </div>
             );
           })}
+          </div>
         </SkeletonReveal>
         <div ref={endRef} />
       </div>
