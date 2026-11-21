@@ -33,7 +33,9 @@ export default function HomePage({
   const [activeCategory, setActiveCategory] = useState('all');
   const [activeLocation, setActiveLocation] = useState('all');
   const [showNotificationDrawer, setShowNotificationDrawer] = useState(false);
-  const [showHelpModal, setShowHelpModal] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(() => (
+    typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('help') === '1'
+  ));
   const locationSectionRef = useRef(null);
 
   // Filter products based on category and location
@@ -174,7 +176,12 @@ export default function HomePage({
       {/* Help & Support Modal */}
       <SupportReportModal
         isOpen={showHelpModal}
-        onClose={() => setShowHelpModal(false)}
+        onClose={() => {
+          setShowHelpModal(false);
+          if (new URLSearchParams(window.location.search).get('help') === '1') {
+            window.history.replaceState({}, '', window.location.pathname);
+          }
+        }}
         currentUser={currentUser}
         onNavigateToLogin={() => onNavigateToLogin?.({ type: 'tab', tab: 'home' })}
       />

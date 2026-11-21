@@ -168,7 +168,9 @@ export default function ProfilePage({
     }
   };
   const [selectedAppointment, setSelectedAppointment] = useState(null);
-  const [showHelpModal, setShowHelpModal] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(() => (
+    typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('help') === '1'
+  ));
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [settingsDisplayName, setSettingsDisplayName] = useState('');
   const [settingsFaculty, setSettingsFaculty] = useState('');
@@ -1323,7 +1325,12 @@ export default function ProfilePage({
       {/* Help Modal / Support Report Form */}
       <SupportReportModal
         isOpen={showHelpModal}
-        onClose={() => setShowHelpModal(false)}
+        onClose={() => {
+          setShowHelpModal(false);
+          if (new URLSearchParams(window.location.search).get('help') === '1') {
+            window.history.replaceState({}, '', window.location.pathname);
+          }
+        }}
         currentUser={currentUser}
         onNavigateToLogin={onNavigateToLogin}
       />
