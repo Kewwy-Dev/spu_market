@@ -73,6 +73,7 @@ export default function SellerDashboardPage({
   isOwner = true,
   userProducts = [],
   transactions = [],
+  publicSalesStats = null,
   pickupLocations = [],
   reviewSummary = { average: null, count: 0 },
   defaultPickupLocation = 'b11',
@@ -164,7 +165,9 @@ export default function SellerDashboardPage({
   }, [userProducts, internalTransactions]);
 
   const activeCount = salesSummary.activeCount;
-  const soldCount = salesSummary.soldCount;
+  const soldCount = isOwner
+    ? salesSummary.soldCount
+    : Math.max(salesSummary.soldCount, Number(publicSalesStats?.completedUnitsSold || 0));
   const trashCount = salesSummary.trashCount;
   const draftCount = salesSummary.draftCount;
   const soldValue = salesSummary.totalRealizedSales;

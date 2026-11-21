@@ -403,8 +403,54 @@ export async function listSellerProducts(sellerId) {
     status: row.status,
     description: row.description || '',
     updatedAt: row.updated_at,
-      categoryName: row.categories?.category_name || row.categories?.slug || '',
+    categoryName: row.categories?.category_name || row.categories?.slug || '',
   }));
+}
+
+export async function listPublicSellerProducts(sellerId) {
+  if (!sellerId) return [];
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from('products')
+    .select('id,title,description,price,quantity,delivery_type,status,created_at,updated_at,seller_id,categories(slug,category_name),pickup_locations(slug,location_name),product_images(image_url,display_order)')
+    .eq('seller_id', sellerId)
+    .in('status', ['active', 'sold'])
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data || []).map((row) => ({
+    ...mapProduct({
+      ...row,
+      image_url: row.product_images?.slice().sort((a, b) => a.display_order - b.display_order)[0]?.image_url,
+      images: row.product_images?.slice().sort((a, b) => a.display_order - b.display_order).map((image) => image.image_url),
+      category_slug: row.categories?.slug,
+      category_name: row.categories?.category_name,
+      location_slug: row.pickup_locations?.slug,
+      location_name: row.pickup_locations?.location_name,
+    }),
+    quantity: row.quantity ?? 1,
+    deliveryType: row.delivery_type || 'pickup',
+    status: row.status,
+    description: row.description || '',
+    updatedAt: row.updated_at,
+    categoryName: row.categories?.category_name || row.categories?.slug || '',
+  }));
+}
+
+export async function getSellerPublicSalesStats(sellerId) {
+  if (!sellerId) return { completedAppointmentsCount: 0, completedUnitsSold: 0 };
+  const client = requireSupabase();
+  const { data, error } = await client.rpc('get_seller_public_sales_stats', {
+    p_seller_id: sellerId,
+  });
+  if (error) {
+    console.warn('Could not load public seller sales stats:', error.message);
+    return { completedAppointmentsCount: 0, completedUnitsSold: 0 };
+  }
+  const row = Array.isArray(data) ? data[0] : data;
+  return {
+    completedAppointmentsCount: Number(row?.completed_appointments_count || 0),
+    completedUnitsSold: Number(row?.completed_units_sold || 0),
+  };
 }
 
 /**
@@ -1073,6 +1119,8 @@ export function computeSellerSalesSummary(userProducts = [], transactions = []) 
   const directSoldRevenue = directSoldProducts.reduce((sum, p) => sum + Number(p.price || 0), 0);
 
   const totalRealizedSales = completedRevenue + directSoldRevenue;
+  const completedUnitsSold = completedTransactions.reduce((sum, t) => sum + Number(t.quantity || 1), 0);
+  const directSoldUnits = directSoldProducts.reduce((sum, p) => sum + Number(p.quantity || 1), 0);
 
   return {
     completedTransactions,
@@ -1090,7 +1138,7 @@ export function computeSellerSalesSummary(userProducts = [], transactions = []) 
     completedCount: completedTransactions.length,
     pendingCount: pendingTransactions.length,
     cancelledCount: cancelledTransactions.length,
-    soldCount: soldProducts.length,
+    soldCount: Math.max(soldProducts.length, completedUnitsSold + directSoldUnits),
     activeCount: activeProducts.length,
     draftCount: draftProducts.length,
     trashCount: trashProducts.length,
