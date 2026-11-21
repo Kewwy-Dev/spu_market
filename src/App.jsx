@@ -187,6 +187,7 @@ export default function App() {
   const [onlineUserIds, setOnlineUserIds] = useState(() => new Set());
   const [inLiff, setInLiff] = useState(false);
   const liffAutoLoginAttempted = useRef(false);
+  const autoLinkedUserIds = useRef(new Set());
 
   useEffect(() => {
     const syncRoute = () => {
@@ -784,6 +785,36 @@ export default function App() {
       void supabase.removeChannel(productsChannel);
     };
   }, []);
+
+  useEffect(() => {
+    if (!inLiff || !currentUser?.id || currentUser?.lineUserId) return;
+    if (autoLinkedUserIds.current.has(currentUser.id)) return;
+    autoLinkedUserIds.current.add(currentUser.id);
+    let active = true;
+
+    void linkCurrentUserWithLiff()
+      .then((res) => {
+        if (active && res?.linked) {
+          setCurrentUser((prev) => (
+            prev && prev.id === currentUser.id
+              ? {
+                  ...prev,
+                  lineUserId: res.lineUserId,
+                  lineDisplayName: res.lineDisplayName || prev.lineDisplayName,
+                  lineLinkedAt: new Date().toISOString(),
+                }
+              : prev
+          ));
+        }
+      })
+      .catch((linkError) => {
+        console.warn('Auto-link LINE failed:', linkError?.message || linkError);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [inLiff, currentUser?.id, currentUser?.lineUserId]);
 
   useEffect(() => {
     if (!currentUser?.id) return undefined;
