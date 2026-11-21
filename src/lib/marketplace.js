@@ -453,6 +453,31 @@ export async function getSellerPublicSalesStats(sellerId) {
   };
 }
 
+export async function listPublicSellerSoldItems(sellerId) {
+  if (!sellerId) return [];
+  const client = requireSupabase();
+  const { data, error } = await client.rpc('get_seller_public_sold_items', {
+    p_seller_id: sellerId,
+  });
+  if (error) {
+    console.warn('Could not load public seller sold items:', error.message);
+    return [];
+  }
+  return (data || []).map((row) => ({
+    id: `sold-${row.appointment_id}`,
+    productId: row.product_id,
+    title: row.title || 'สินค้า',
+    price: Number(row.price || 0),
+    quantity: Number(row.sold_quantity || 1),
+    category: row.category_slug || '',
+    categoryName: row.category_name || row.category_slug || '',
+    location: row.location_name || 'ไม่ระบุจุดนัดรับ',
+    image: row.image_url || '',
+    status: 'sold',
+    createdAt: row.completed_at,
+  }));
+}
+
 /**
  * คำนวณสรุปคะแนนร้านค้า:
  * - average = ผลรวมคะแนนทั้งหมด / จำนวนครั้งที่ให้คะแนน (ช่วง 1-5 ดาว)

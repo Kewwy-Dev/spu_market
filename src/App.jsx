@@ -11,7 +11,7 @@ import ChatRoomPage from './pages/ChatRoomPage';
 import CartPage from './pages/CartPage';
 import ProductsPage from './pages/ProductsPage';
 import BottomNav from './components/common/BottomNav';
-import { getCurrentProfile, completeSellerRegistration, getSellerPickupLocation, listProducts, listSellerProducts, listPublicSellerProducts, getSellerPublicSalesStats, listPickupLocations, listSellerReviewSummary, createProduct, updateProduct, trashProduct, restoreProduct, updateSellerPickupLocation, updateProductStatus, markProductAsSold, listSellerTransactions, updateUserProfile, uploadProfileAvatar, getProductById, isProductFavorited, toggleFavoriteProduct, updateLineNotificationPreferences } from './lib/marketplace';
+import { getCurrentProfile, completeSellerRegistration, getSellerPickupLocation, listProducts, listSellerProducts, listPublicSellerProducts, getSellerPublicSalesStats, listPublicSellerSoldItems, listPickupLocations, listSellerReviewSummary, createProduct, updateProduct, trashProduct, restoreProduct, updateSellerPickupLocation, updateProductStatus, markProductAsSold, listSellerTransactions, updateUserProfile, uploadProfileAvatar, getProductById, isProductFavorited, toggleFavoriteProduct, updateLineNotificationPreferences } from './lib/marketplace';
 import {
   initLiff,
   isInLiffClient,
@@ -171,6 +171,7 @@ export default function App() {
   const [publicSellerProducts, setPublicSellerProducts] = useState([]);
   const [publicReviewSummary, setPublicReviewSummary] = useState({ average: null, count: 0 });
   const [publicSalesStats, setPublicSalesStats] = useState({ completedAppointmentsCount: 0, completedUnitsSold: 0 });
+  const [publicSoldItems, setPublicSoldItems] = useState([]);
   const [publicSellerLoading, setPublicSellerLoading] = useState(false);
   const [publicSellerError, setPublicSellerError] = useState('');
   const [editingProduct, setEditingProduct] = useState(null);
@@ -875,14 +876,16 @@ export default function App() {
       listPublicSellerProducts(targetId),
       listSellerReviewSummary(targetId),
       getSellerPublicSalesStats(targetId),
+      listPublicSellerSoldItems(targetId),
     ])
-      .then(([{ data: profile, error: profileErr }, prods, reviews, salesStats]) => {
+      .then(([{ data: profile, error: profileErr }, prods, reviews, salesStats, soldItems]) => {
         if (!isCurrent) return;
         if (profileErr) throw profileErr;
         setPublicSeller(profile || { id: targetId, display_name: 'ผู้ขาย SPU' });
         setPublicSellerProducts(prods || []);
         setPublicReviewSummary(reviews || { average: null, count: 0 });
         setPublicSalesStats(salesStats || { completedAppointmentsCount: 0, completedUnitsSold: 0 });
+        setPublicSoldItems(soldItems || []);
       })
       .catch((err) => {
         if (!isCurrent) return;
@@ -1330,6 +1333,7 @@ export default function App() {
               userProducts={isOwner ? sellerProducts : publicSellerProducts}
               transactions={isOwner ? sellerTransactions : []}
               publicSalesStats={isOwner ? null : publicSalesStats}
+              publicSoldItems={isOwner ? [] : publicSoldItems}
               defaultPickupLocation={sellerPickupLocation}
               initialPickupLocation={sellerInitialPickupLocation || sellerPickupLocation}
               pickupLocations={sellerPickupLocations}

@@ -74,6 +74,7 @@ export default function SellerDashboardPage({
   userProducts = [],
   transactions = [],
   publicSalesStats = null,
+  publicSoldItems = [],
   pickupLocations = [],
   reviewSummary = { average: null, count: 0 },
   defaultPickupLocation = 'b11',
@@ -172,13 +173,23 @@ export default function SellerDashboardPage({
   const draftCount = salesSummary.draftCount;
   const soldValue = salesSummary.totalRealizedSales;
 
+  const mergedBuyerSoldProducts = useMemo(() => {
+    if (isOwner) return [];
+    const completedProductIds = new Set(publicSoldItems.map((item) => item.productId).filter(Boolean));
+    const directSold = userProducts.filter((p) => p.status === 'sold' && !completedProductIds.has(p.id));
+    return [...publicSoldItems, ...directSold];
+  }, [isOwner, publicSoldItems, userProducts]);
+
   const visibleProducts = useMemo(() => {
+    if (!isOwner && activeFilter === 'sold') {
+      return mergedBuyerSoldProducts;
+    }
     return userProducts.filter((product) => (
       activeFilter === 'draft'
         ? product.status === 'draft' || product.status === 'archived'
         : product.status === activeFilter
     ));
-  }, [userProducts, activeFilter]);
+  }, [isOwner, mergedBuyerSoldProducts, userProducts, activeFilter]);
 
   const visibleTransactions = useMemo(() => {
     if (txSubFilter === 'all') return internalTransactions;
@@ -726,6 +737,8 @@ export default function SellerDashboardPage({
             {currentFilters.map((filter) => {
               const count = isLoading
                 ? '—'
+                : !isOwner && filter.id === 'sold'
+                ? mergedBuyerSoldProducts.length
                 : userProducts.filter((product) => product.status === filter.id).length;
               const isActive = activeFilter === filter.id;
               return (
@@ -789,7 +802,11 @@ export default function SellerDashboardPage({
                     }`}
                     key={product.id}
                     onClick={() => {
-                      if (!isOwner) onSelectProduct?.(product);
+                      if (!isOwner) {
+                        onSelectProduct?.(
+                          product.productId ? { ...product, id: product.productId } : product
+                        );
+                      }
                     }}
                   >
                     <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-slate-100 sm:h-24 sm:w-24">
