@@ -49,7 +49,7 @@ function AnimatedCountBadge({ count, tone = 'unread' }) {
 export default function BottomNav({ activeTab, onSelectTab, cartCount = 0, unreadMessageCount = 0 }) {
   return (
     // "fixed-bottom-nav" is kept as a hook: legacy `:has()` rules hide the nav on seller/add-product pages.
-    <nav className="fixed-bottom-nav fixed inset-x-0 bottom-0 z-[60] h-16 border-t border-slate-200 bg-white/95 backdrop-blur-md" aria-label="แถบเมนูหลัก">
+    <nav className="fixed-bottom-nav fixed inset-x-0 bottom-0 z-[60] h-[calc(4rem+env(safe-area-inset-bottom))] border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md" aria-label="แถบเมนูหลัก">
       <div className="mx-auto grid h-full w-full max-w-2xl grid-cols-4 px-1.5 pt-1 pb-1.5">
         <button
           type="button"

@@ -11,7 +11,14 @@ import ChatRoomPage from './pages/ChatRoomPage';
 import CartPage from './pages/CartPage';
 import ProductsPage from './pages/ProductsPage';
 import BottomNav from './components/common/BottomNav';
-import { getCurrentProfile, completeSellerRegistration, getSellerPickupLocation, listProducts, listSellerProducts, listPickupLocations, listSellerReviewSummary, createProduct, updateProduct, trashProduct, restoreProduct, updateSellerPickupLocation, updateProductStatus, markProductAsSold, listSellerTransactions, updateUserProfile, uploadProfileAvatar, getProductById, isProductFavorited, toggleFavoriteProduct } from './lib/marketplace';
+import { getCurrentProfile, completeSellerRegistration, getSellerPickupLocation, listProducts, listSellerProducts, listPickupLocations, listSellerReviewSummary, createProduct, updateProduct, trashProduct, restoreProduct, updateSellerPickupLocation, updateProductStatus, markProductAsSold, listSellerTransactions, updateUserProfile, uploadProfileAvatar, getProductById, isProductFavorited, toggleFavoriteProduct, updateLineNotificationPreferences } from './lib/marketplace';
+import {
+  initLiff,
+  isInLiffClient,
+  linkCurrentUserWithLiff,
+  tryAutoLoginWithLiff,
+  unlinkCurrentUserLine,
+} from './lib/liff';
 import {
   READ_NOTIFICATION_TTL_MS,
   deleteExpiredReadNotifications,
@@ -113,6 +120,11 @@ function mapAuthUser(authUser, profile = {}) {
     verified: Boolean(profile.is_verified),
     avatar: profile.avatar_url || authUser.user_metadata?.avatar_url || '',
     defaultPickupLocationId: profile.default_pickup_location_id || null,
+    lineUserId: profile.line_user_id || null,
+    lineDisplayName: profile.line_display_name || '',
+    lineLinkedAt: profile.line_linked_at || null,
+    lineNotifyEnabled: profile.line_notify_enabled !== false,
+    lineNotifyCategories: profile.line_notify_categories || { chat: true, pickup: true, review: true },
   };
 }
 
@@ -170,6 +182,8 @@ export default function App() {
   const [notifications, setNotifications] = useState([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [onlineUserIds, setOnlineUserIds] = useState(() => new Set());
+  const [inLiff, setInLiff] = useState(false);
+  const liffAutoLoginAttempted = useRef(false);
 
   useEffect(() => {
     const syncRoute = () => {
@@ -670,8 +684,28 @@ export default function App() {
           }
         }
         if (isMounted && syncId === userSyncId) {
-          const mappedUser = mapAuthUser(authUser, profile);
+          let mappedUser = mapAuthUser(authUser, profile);
           setCurrentUser(mappedUser);
+          if (authEvent === 'SIGNED_IN' && isInLiffClient() && !profile?.line_user_id) {
+            void linkCurrentUserWithLiff()
+              .then((res) => {
+                if (isMounted && res?.linked) {
+                  setCurrentUser((prev) => (
+                    prev && prev.id === authUser.id
+                      ? {
+                          ...prev,
+                          lineUserId: res.lineUserId,
+                          lineDisplayName: res.lineDisplayName || prev.lineDisplayName,
+                          lineLinkedAt: new Date().toISOString(),
+                        }
+                      : prev
+                  ));
+                }
+              })
+              .catch((linkError) => {
+                console.warn('Auto-link LINE failed:', linkError?.message || linkError);
+              });
+          }
           if (registrationCompletedRedirect) {
             savePendingAuthAction(null);
           } else {
@@ -693,9 +727,26 @@ export default function App() {
       return () => { isMounted = false; };
     }
 
-    supabase.auth.getSession().then(({ data, error }) => {
+    const liffInitPromise = initLiff().then((liffState) => {
+      if (isMounted) setInLiff(Boolean(liffState?.inClient));
+      return liffState;
+    });
+
+    supabase.auth.getSession().then(async ({ data, error }) => {
       if (error) console.error('Could not restore session:', error.message);
-      if (isMounted) void syncUser(data.session?.user || null);
+      const sessionUser = data.session?.user || null;
+      if (isMounted) void syncUser(sessionUser);
+      if (!sessionUser && !liffAutoLoginAttempted.current) {
+        liffAutoLoginAttempted.current = true;
+        const liffState = await liffInitPromise;
+        if (isMounted && liffState?.initialized && liffState?.loggedIn) {
+          try {
+            await tryAutoLoginWithLiff();
+          } catch (liffLoginError) {
+            console.warn('LINE auto-login skipped:', liffLoginError?.message || liffLoginError);
+          }
+        }
+      }
     });
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       window.setTimeout(() => {
@@ -1131,12 +1182,14 @@ export default function App() {
               navigateHome();
             }}
             onLoginSuccess={handleLoginSuccess}
+            inLiff={inLiff}
           />
         )}
 
         {activeTab === 'profile' && (
           <ProfilePage
             currentUser={currentUser}
+            inLiff={inLiff}
             onLogout={handleLogout}
             onBackToHome={navigateHome}
             onSwitchToSeller={handleSwitchToSeller}
@@ -1145,6 +1198,48 @@ export default function App() {
             onSelectProduct={navigateToProduct}
             onNavigateToProducts={navigateToProducts}
             onNavigateToSeller={navigateToSeller}
+            onLinkLine={async () => {
+              const res = await linkCurrentUserWithLiff();
+              if (res?.linked) {
+                setCurrentUser((prev) => (
+                  prev
+                    ? {
+                        ...prev,
+                        lineUserId: res.lineUserId,
+                        lineDisplayName: res.lineDisplayName || prev.lineDisplayName,
+                        lineLinkedAt: new Date().toISOString(),
+                      }
+                    : prev
+                ));
+              }
+              return res;
+            }}
+            onUnlinkLine={async () => {
+              await unlinkCurrentUserLine();
+              setCurrentUser((prev) => (
+                prev
+                  ? {
+                      ...prev,
+                      lineUserId: null,
+                      lineDisplayName: '',
+                      lineLinkedAt: null,
+                    }
+                  : prev
+              ));
+            }}
+            onUpdateLineNotify={async ({ enabled, categories }) => {
+              if (!currentUser?.id) throw new Error('กรุณาเข้าสู่ระบบก่อนตั้งค่าการแจ้งเตือน');
+              const updated = await updateLineNotificationPreferences(currentUser.id, { enabled, categories });
+              setCurrentUser((prev) => (
+                prev
+                  ? {
+                      ...prev,
+                      lineNotifyEnabled: updated.line_notify_enabled !== false,
+                      lineNotifyCategories: updated.line_notify_categories || prev.lineNotifyCategories,
+                    }
+                  : prev
+              ));
+            }}
             onUpdateProfile={async ({ displayName, faculty, major, contact, avatarFile }) => {
               if (!currentUser?.id) throw new Error('กรุณาเข้าสู่ระบบก่อนแก้ไขโปรไฟล์');
               let nextAvatarUrl;

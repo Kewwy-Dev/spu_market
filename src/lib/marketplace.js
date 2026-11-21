@@ -93,25 +93,67 @@ async function removeStoredProductImages(imageUrls = []) {
 function isMissingProfileColumnError(error) {
   if (!error) return false;
   const msg = String(error.message || '');
-  return error.code === '42703' || error.code === 'PGRST204' || msg.includes('avatar_url') || msg.includes('major');
+  return (
+    error.code === '42703' ||
+    error.code === 'PGRST204' ||
+    msg.includes('avatar_url') ||
+    msg.includes('major') ||
+    msg.includes('line_user_id') ||
+    msg.includes('line_notify_enabled')
+  );
 }
 
 export async function getCurrentProfile(user) {
   const client = requireSupabase();
   const { data, error } = await client
     .from('profiles')
-    .select('id,student_id,display_name,faculty,major,contact,student_card_url,member_type,role,is_verified,default_pickup_location_id,avatar_url')
+    .select(
+      'id,student_id,display_name,faculty,major,contact,student_card_url,member_type,role,is_verified,default_pickup_location_id,avatar_url,line_user_id,line_display_name,line_linked_at,line_notify_enabled,line_notify_categories'
+    )
     .eq('id', user.id)
     .single();
   if (error && isMissingProfileColumnError(error)) {
     const { data: fallbackData, error: fallbackError } = await client
       .from('profiles')
-      .select('id,student_id,display_name,faculty,contact,student_card_url,member_type,role,is_verified,default_pickup_location_id')
+      .select('id,student_id,display_name,faculty,major,contact,student_card_url,member_type,role,is_verified,default_pickup_location_id,avatar_url')
       .eq('id', user.id)
       .single();
+    if (fallbackError && isMissingProfileColumnError(fallbackError)) {
+      const { data: legacyData, error: legacyError } = await client
+        .from('profiles')
+        .select('id,student_id,display_name,faculty,contact,student_card_url,member_type,role,is_verified,default_pickup_location_id')
+        .eq('id', user.id)
+        .single();
+      if (legacyError) throw legacyError;
+      return legacyData;
+    }
     if (fallbackError) throw fallbackError;
     return fallbackData;
   }
+  if (error) throw error;
+  return data;
+}
+
+export async function updateLineNotificationPreferences(userId, { enabled, categories }) {
+  if (!userId) throw new Error('กรุณาเข้าสู่ระบบก่อนตั้งค่าการแจ้งเตือน');
+  const client = requireSupabase();
+  const payload = {};
+  if (typeof enabled === 'boolean') {
+    payload.line_notify_enabled = enabled;
+  }
+  if (categories && typeof categories === 'object') {
+    payload.line_notify_categories = {
+      chat: categories.chat !== false,
+      pickup: categories.pickup !== false,
+      review: categories.review !== false,
+    };
+  }
+  const { data, error } = await client
+    .from('profiles')
+    .update(payload)
+    .eq('id', userId)
+    .select('line_user_id,line_display_name,line_linked_at,line_notify_enabled,line_notify_categories')
+    .single();
   if (error) throw error;
   return data;
 }

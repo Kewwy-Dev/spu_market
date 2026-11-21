@@ -8,7 +8,14 @@ import { FACULTIES, getMajorsByFaculty } from '../data/faculties';
 import { supabase } from '../lib/supabase';
 import { countUserFavorites } from '../lib/marketplace';
 import {
+  getLineOaUrl,
+  getLiffFriendshipStatus,
+  isLiffConfigured,
+  openExternalUrl,
+} from '../lib/liff';
+import {
   ArrowLeft,
+  Bell,
   GraduationCap,
   Settings,
   Store,
@@ -32,6 +39,9 @@ import {
   Save,
   Loader2,
   AlertCircle,
+  Link2,
+  Unlink,
+  ExternalLink,
 } from 'lucide-react';
 
 const DEFAULT_AVATAR_URL =
@@ -41,6 +51,7 @@ const MAX_AVATAR_SIZE_BYTES = 5 * 1024 * 1024;
 
 export default function ProfilePage({
   currentUser,
+  inLiff = false,
   onLogout,
   onBackToHome,
   onSwitchToSeller,
@@ -50,6 +61,9 @@ export default function ProfilePage({
   onNavigateToProducts,
   onNavigateToSeller,
   onUpdateProfile,
+  onLinkLine,
+  onUnlinkLine,
+  onUpdateLineNotify,
 }) {
   const [activeActivityTab, setActiveActivityTab] = useState('pending');
   const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
@@ -61,6 +75,75 @@ export default function ProfilePage({
     typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('tab') === 'favorites'
   ));
   const [favoritesCount, setFavoritesCount] = useState(0);
+  const [lineActionLoading, setLineActionLoading] = useState(false);
+  const [lineActionError, setLineActionError] = useState('');
+  const [lineFriendFlag, setLineFriendFlag] = useState(null);
+
+  useEffect(() => {
+    if (!inLiff || !currentUser?.id) return;
+    void getLiffFriendshipStatus().then((status) => {
+      if (status && typeof status.friendFlag === 'boolean') {
+        setLineFriendFlag(status.friendFlag);
+      }
+    });
+  }, [inLiff, currentUser?.id]);
+
+  const handleLinkLine = async () => {
+    if (!onLinkLine || lineActionLoading) return;
+    setLineActionError('');
+    setLineActionLoading(true);
+    try {
+      await onLinkLine();
+    } catch (err) {
+      setLineActionError(err?.message || 'ผูกบัญชี LINE ไม่สำเร็จ กรุณาลองอีกครั้ง');
+    } finally {
+      setLineActionLoading(false);
+    }
+  };
+
+  const handleUnlinkLine = async () => {
+    if (!onUnlinkLine || lineActionLoading) return;
+    setLineActionError('');
+    setLineActionLoading(true);
+    try {
+      await onUnlinkLine();
+    } catch (err) {
+      setLineActionError(err?.message || 'ยกเลิกการผูกบัญชี LINE ไม่สำเร็จ');
+    } finally {
+      setLineActionLoading(false);
+    }
+  };
+
+  const handleToggleLineNotify = async (nextEnabled) => {
+    if (!onUpdateLineNotify || lineActionLoading) return;
+    setLineActionError('');
+    setLineActionLoading(true);
+    try {
+      await onUpdateLineNotify({ enabled: nextEnabled });
+    } catch (err) {
+      setLineActionError(err?.message || 'บันทึกการตั้งค่าไม่สำเร็จ');
+    } finally {
+      setLineActionLoading(false);
+    }
+  };
+
+  const handleToggleLineCategory = async (categoryKey) => {
+    if (!onUpdateLineNotify || lineActionLoading) return;
+    const currentCategories = currentUser?.lineNotifyCategories || { chat: true, pickup: true, review: true };
+    const nextCategories = {
+      ...currentCategories,
+      [categoryKey]: currentCategories[categoryKey] === false,
+    };
+    setLineActionError('');
+    setLineActionLoading(true);
+    try {
+      await onUpdateLineNotify({ categories: nextCategories });
+    } catch (err) {
+      setLineActionError(err?.message || 'บันทึกหมวดหมู่แจ้งเตือนไม่สำเร็จ');
+    } finally {
+      setLineActionLoading(false);
+    }
+  };
 
   useEffect(() => {
     const handlePopState = () => {
@@ -850,6 +933,160 @@ export default function ProfilePage({
             </div>
           </button>
         </div>
+
+        {/* 4.5 LINE OA Connection & Notifications */}
+        {currentUser && (
+          <section className="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_4px_16px_rgba(0,0,0,0.04)] lg:col-span-5">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                  <Bell size={17} />
+                </div>
+                <div>
+                  <h4 className="m-0 text-sm font-extrabold text-slate-900">
+                    การเชื่อมต่อ LINE OA &amp; แจ้งเตือน
+                  </h4>
+                  <p className="m-0 text-[11px] text-slate-500">
+                    รับแจ้งเตือนแชท นัดรับสินค้า และรีวิวผ่าน LINE
+                  </p>
+                </div>
+              </div>
+              {currentUser.lineUserId ? (
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
+                  <CheckCircle2 size={12} />
+                  ผูกแล้ว
+                </span>
+              ) : (
+                <span className="inline-flex shrink-0 items-center rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500">
+                  ยังไม่ผูก
+                </span>
+              )}
+            </div>
+
+            {lineActionError && (
+              <p className="m-0 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700" role="alert">
+                {lineActionError}
+              </p>
+            )}
+
+            {currentUser.lineUserId ? (
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5">
+                  <div className="min-w-0">
+                    <p className="m-0 truncate text-xs font-bold text-slate-800">
+                      บัญชี LINE: {currentUser.lineDisplayName || 'เชื่อมต่อแล้ว'}
+                    </p>
+                    <p className="m-0 text-[11px] text-slate-500">
+                      เข้าใช้งานผ่าน LINE OA ได้อัตโนมัติ
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={lineActionLoading}
+                    onClick={handleUnlinkLine}
+                    className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-600 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:opacity-60"
+                  >
+                    <Unlink size={12} />
+                    <span>ยกเลิก</span>
+                  </button>
+                </div>
+
+                {lineFriendFlag === false && getLineOaUrl() && (
+                  <button
+                    type="button"
+                    onClick={() => openExternalUrl(getLineOaUrl())}
+                    className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 transition-colors hover:bg-emerald-100"
+                  >
+                    <ExternalLink size={14} />
+                    <span>เพิ่มเพื่อน LINE OA เพื่อรับแจ้งเตือน</span>
+                  </button>
+                )}
+
+                <div className="flex items-center justify-between gap-2 pt-1">
+                  <span className="text-xs font-bold text-slate-800">
+                    เปิดรับแจ้งเตือนเข้า LINE
+                  </span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={currentUser.lineNotifyEnabled !== false}
+                    disabled={lineActionLoading}
+                    onClick={() => handleToggleLineNotify(currentUser.lineNotifyEnabled === false)}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors disabled:opacity-60 ${
+                      currentUser.lineNotifyEnabled !== false ? 'bg-emerald-500' : 'bg-slate-300'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        currentUser.lineNotifyEnabled !== false ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {currentUser.lineNotifyEnabled !== false && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      { key: 'chat', label: 'แชทใหม่' },
+                      { key: 'pickup', label: 'นัดรับสินค้า' },
+                      { key: 'review', label: 'รีวิวผู้ขาย' },
+                    ].map(({ key, label }) => {
+                      const active = currentUser.lineNotifyCategories?.[key] !== false;
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          disabled={lineActionLoading}
+                          onClick={() => handleToggleLineCategory(key)}
+                          className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-[11px] font-bold transition-colors disabled:opacity-60 ${
+                            active
+                              ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                              : 'border-slate-200 bg-slate-50 text-slate-400'
+                          }`}
+                        >
+                          {active && <CheckCircle2 size={11} />}
+                          <span>{label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {isLiffConfigured() ? (
+                  <button
+                    type="button"
+                    disabled={lineActionLoading}
+                    onClick={handleLinkLine}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#06C755] px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-all hover:bg-[#05b34c] disabled:opacity-60"
+                  >
+                    {lineActionLoading ? (
+                      <Loader2 size={15} className="animate-spin" />
+                    ) : (
+                      <Link2 size={15} />
+                    )}
+                    <span>ผูกบัญชีกับ LINE เพื่อรับแจ้งเตือน</span>
+                  </button>
+                ) : (
+                  <p className="m-0 text-[11px] text-slate-500">
+                    เปิดใช้งานผ่าน LINE OA หรือตั้งค่า <code className="rounded bg-slate-100 px-1 py-0.5">VITE_LIFF_ID</code> เพื่อผูกบัญชี LINE
+                  </p>
+                )}
+                {getLineOaUrl() && (
+                  <button
+                    type="button"
+                    onClick={() => openExternalUrl(getLineOaUrl())}
+                    className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-100"
+                  >
+                    <ExternalLink size={13} />
+                    <span>เปิด LINE OA ของ SPU Market</span>
+                  </button>
+                )}
+              </div>
+            )}
+          </section>
+        )}
 
         {/* 5. Footer & Logout */}
         {currentUser && (
