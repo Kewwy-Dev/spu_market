@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { LifeBuoy, Phone, MessageCircle, X } from 'lucide-react';
 import AppHeader from '../components/common/AppHeader';
 import NotificationDrawer from '../components/NotificationDrawer';
+import SupportReportModal from '../components/SupportReportModal';
 import HeroBannerSlider from '../components/home/HeroBannerSlider';
 import QuickActions from '../components/home/QuickActions';
 import CategoryList from '../components/home/CategoryList';
@@ -172,62 +172,12 @@ export default function HomePage({
       />
 
       {/* Help & Support Modal */}
-      {showHelpModal && (
-        <div
-          className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-900/55 p-0 backdrop-blur-xs sm:items-center sm:p-4"
-          onClick={() => setShowHelpModal(false)}
-          role="presentation"
-        >
-          <div
-            className="flex w-full max-w-md flex-col gap-4 rounded-t-3xl bg-white p-5 shadow-2xl sm:rounded-3xl"
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="home-help-title"
-          >
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-spu-teal-light text-spu-teal">
-                <LifeBuoy size={20} />
-              </div>
-              <h3 id="home-help-title" className="flex-1 text-base font-bold text-slate-900">
-                ศูนย์ช่วยเหลือ &amp; แจ้งปัญหา
-              </h3>
-              <button
-                type="button"
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-900"
-                onClick={() => setShowHelpModal(false)}
-                aria-label="ปิดศูนย์ช่วยเหลือ"
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <div className="flex flex-col gap-3 text-[0.78rem] leading-relaxed text-slate-600">
-              <p>หากพบปัญหาในการซื้อขาย ไม่มาตามนัด สินค้าไม่ตรงปก หรือต้องการความช่วยเหลือ ติดต่อผู้ดูแลระบบได้ที่:</p>
-              <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-slate-700">
-                <Phone size={16} className="mt-0.5 shrink-0 text-spu-pink" />
-                <div className="flex flex-col gap-0.5">
-                  <strong className="text-[0.8rem] font-bold text-slate-900">โทรด่วนฝ่ายประสานงาน SPU Market</strong>
-                  <span className="text-[0.74rem] text-slate-500">02-579-1111 ต่อ 1234 (เวลาทำการ 08:30 - 16:30 น.)</span>
-                </div>
-              </div>
-              <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-slate-700">
-                <MessageCircle size={16} className="mt-0.5 shrink-0 text-spu-teal" />
-                <div className="flex flex-col gap-0.5">
-                  <strong className="text-[0.8rem] font-bold text-slate-900">LINE Official SPU Market</strong>
-                  <span className="text-[0.74rem] text-slate-500">@spumarket (ดูแลความปลอดภัยและให้คำปรึกษาตลอด 24 ชม.)</span>
-                </div>
-              </div>
-            </div>
-            <button
-              type="button"
-              className="h-11 w-full rounded-xl bg-spu-pink text-sm font-bold text-white transition-colors hover:bg-spu-pink-hover"
-              onClick={() => setShowHelpModal(false)}
-            >
-              ปิดหน้าต่าง
-            </button>
-          </div>
-        </div>
-      )}
+      <SupportReportModal
+        isOpen={showHelpModal}
+        onClose={() => setShowHelpModal(false)}
+        currentUser={currentUser}
+        onNavigateToLogin={() => onNavigateToLogin?.({ type: 'tab', tab: 'home' })}
+      />
 
     </div>
   );
