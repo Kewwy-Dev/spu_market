@@ -167,7 +167,7 @@ export default function SellerDashboardPage({
   const activeCount = salesSummary.activeCount;
   const soldCount = isOwner
     ? salesSummary.soldCount
-    : Math.max(salesSummary.soldCount, Number(publicSalesStats?.completedUnitsSold || 0));
+    : Math.max(salesSummary.soldCount, Number(publicSalesStats?.completedAppointmentsCount || 0));
   const trashCount = salesSummary.trashCount;
   const draftCount = salesSummary.draftCount;
   const soldValue = salesSummary.totalRealizedSales;
@@ -432,7 +432,7 @@ export default function SellerDashboardPage({
               <strong className="text-sm leading-tight font-extrabold text-slate-800 sm:text-base">
                 {isLoading ? '—' : soldCount}
               </strong>
-              <small className="text-[11px] text-slate-500">ชิ้นที่ขายแล้ว</small>
+              <small className="text-[11px] text-slate-500">รายการที่ขายแล้ว</small>
             </div>
           </div>
         </section>

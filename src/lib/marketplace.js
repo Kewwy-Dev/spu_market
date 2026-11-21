@@ -1119,8 +1119,6 @@ export function computeSellerSalesSummary(userProducts = [], transactions = []) 
   const directSoldRevenue = directSoldProducts.reduce((sum, p) => sum + Number(p.price || 0), 0);
 
   const totalRealizedSales = completedRevenue + directSoldRevenue;
-  const completedUnitsSold = completedTransactions.reduce((sum, t) => sum + Number(t.quantity || 1), 0);
-  const directSoldUnits = directSoldProducts.reduce((sum, p) => sum + Number(p.quantity || 1), 0);
 
   return {
     completedTransactions,
@@ -1138,7 +1136,7 @@ export function computeSellerSalesSummary(userProducts = [], transactions = []) 
     completedCount: completedTransactions.length,
     pendingCount: pendingTransactions.length,
     cancelledCount: cancelledTransactions.length,
-    soldCount: Math.max(soldProducts.length, completedUnitsSold + directSoldUnits),
+    soldCount: Math.max(soldProducts.length, completedTransactions.length + directSoldProducts.length),
     activeCount: activeProducts.length,
     draftCount: draftProducts.length,
     trashCount: trashProducts.length,
