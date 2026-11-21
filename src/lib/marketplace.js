@@ -158,6 +158,69 @@ export async function updateLineNotificationPreferences(userId, { enabled, categ
   return data;
 }
 
+const SUPPORT_IMAGE_BUCKET = 'support-images';
+
+export async function submitSupportReport(user, { category, description, imageFile }) {
+  if (!user?.id) throw new Error('กรุณาเข้าสู่ระบบก่อนส่งเรื่องแจ้งปัญหา');
+  const trimmedDescription = String(description || '').trim();
+  if (!trimmedDescription) throw new Error('กรุณาอธิบายปัญหาที่เกิดขึ้น');
+  const allowedCategories = ['การใช้งาน', 'ข้อผิดพลาดระบบ', 'การซื้อขาย'];
+  if (!allowedCategories.includes(category)) {
+    throw new Error('กรุณาเลือกหัวข้อปัญหาให้ถูกต้อง');
+  }
+
+  const client = requireSupabase();
+  let imageUrl = null;
+
+  if (imageFile) {
+    if (!ALLOWED_AVATAR_TYPES.includes(imageFile.type)) {
+      throw new Error('รองรับเฉพาะไฟล์รูปภาพ JPG, PNG หรือ WebP เท่านั้น');
+    }
+    if (imageFile.size > MAX_AVATAR_BYTES) {
+      throw new Error('ขนาดรูปภาพต้องไม่เกิน 5 MB');
+    }
+    const extension = imageFile.type === 'image/png' ? 'png' : imageFile.type === 'image/webp' ? 'webp' : 'jpg';
+    const imagePath = `${user.id}/${crypto.randomUUID()}.${extension}`;
+    const { data: uploadData, error: uploadError } = await client.storage
+      .from(SUPPORT_IMAGE_BUCKET)
+      .upload(imagePath, imageFile, {
+        cacheControl: '3600',
+        contentType: imageFile.type,
+        upsert: false,
+      });
+    if (uploadError) throw uploadError;
+    if (uploadData?.path) {
+      imageUrl = client.storage.from(SUPPORT_IMAGE_BUCKET).getPublicUrl(uploadData.path).data.publicUrl;
+    }
+  }
+
+  const { data, error } = await client
+    .from('support_reports')
+    .insert({
+      user_id: user.id,
+      reporter_name: user.displayName || user.username || '',
+      reporter_email: user.email || '',
+      reporter_student_id: user.studentId || '',
+      category,
+      description: trimmedDescription,
+      image_url: imageUrl,
+    })
+    .select('id,category,description,image_url,status,created_at')
+    .single();
+
+  if (error) throw error;
+
+  try {
+    await client.functions.invoke('send-support-report', {
+      body: { reportId: data.id },
+    });
+  } catch (notifyError) {
+    console.warn('Support report LINE notification failed:', notifyError?.message || notifyError);
+  }
+
+  return data;
+}
+
 export async function uploadProfileAvatar(file, user) {
   if (!file) throw new Error('กรุณาเลือกรูปภาพโปรไฟล์');
   if (!user?.id) throw new Error('กรุณาเข้าสู่ระบบก่อนอัปโหลดรูปโปรไฟล์');
