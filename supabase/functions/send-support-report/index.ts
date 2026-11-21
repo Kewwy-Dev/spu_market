@@ -21,7 +21,15 @@ interface SupportReport {
   category: string;
   description: string;
   image_url: string | null;
+  image_urls?: string[] | null;
   created_at: string;
+}
+
+function getReportImages(report: SupportReport): string[] {
+  if (Array.isArray(report.image_urls) && report.image_urls.length > 0) {
+    return report.image_urls.filter((url): url is string => typeof url === 'string' && url.length > 0).slice(0, 5);
+  }
+  return report.image_url ? [report.image_url] : [];
 }
 
 function buildSupportFlexMessage(report: SupportReport, { isAdminCopy }: { isAdminCopy: boolean }) {
@@ -29,6 +37,38 @@ function buildSupportFlexMessage(report: SupportReport, { isAdminCopy }: { isAdm
   const headerTitle = isAdminCopy
     ? `แจ้งปัญหาใหม่ #${shortId}`
     : `ส่งเรื่องแจ้งปัญหาแล้ว #${shortId}`;
+  const images = getReportImages(report);
+
+  const extraImageThumbnails =
+    images.length > 1
+      ? [
+          {
+            type: 'text',
+            text: `รูปภาพแนบทั้งหมด (${images.length} รูป — แตะเพื่อดูรูปเต็ม)`,
+            size: 'xxs',
+            color: '#64748b',
+            margin: 'md',
+          },
+          {
+            type: 'box',
+            layout: 'horizontal',
+            spacing: 'xs',
+            margin: 'xs',
+            contents: images.map((url) => ({
+              type: 'image',
+              url,
+              size: 'full',
+              aspectRatio: '1:1',
+              aspectMode: 'cover',
+              flex: 1,
+              action: {
+                type: 'uri',
+                uri: url,
+              },
+            })),
+          },
+        ]
+      : [];
 
   const contents: Record<string, unknown> = {
     type: 'bubble',
@@ -71,6 +111,7 @@ function buildSupportFlexMessage(report: SupportReport, { isAdminCopy }: { isAdm
           wrap: true,
           maxLines: 6,
         },
+        ...extraImageThumbnails,
         {
           type: 'separator',
           margin: 'md',
@@ -98,16 +139,16 @@ function buildSupportFlexMessage(report: SupportReport, { isAdminCopy }: { isAdm
     },
   };
 
-  if (report.image_url) {
+  if (images.length > 0) {
     contents.hero = {
       type: 'image',
-      url: report.image_url,
+      url: images[0],
       size: 'full',
       aspectRatio: '16:9',
       aspectMode: 'cover',
       action: {
         type: 'uri',
-        uri: report.image_url,
+        uri: images[0],
       },
     };
   }

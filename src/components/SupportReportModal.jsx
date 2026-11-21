@@ -13,6 +13,7 @@ import { submitSupportReport } from '../lib/marketplace';
 
 const ALLOWED_IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
+const MAX_SUPPORT_IMAGES = 5;
 const SUPPORT_CATEGORIES = ['การใช้งาน', 'ข้อผิดพลาดระบบ', 'การซื้อขาย'];
 
 export default function SupportReportModal({
@@ -23,18 +24,22 @@ export default function SupportReportModal({
 }) {
   const [category, setCategory] = useState('การใช้งาน');
   const [description, setDescription] = useState('');
-  const [imageFile, setImageFile] = useState(null);
-  const [imagePreview, setImagePreview] = useState('');
+  const [imageItems, setImageItems] = useState([]); // [{ id, file, preview }]
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const fileInputRef = useRef(null);
+  const imageItemsRef = useRef([]);
+
+  useEffect(() => {
+    imageItemsRef.current = imageItems;
+  }, [imageItems]);
 
   useEffect(() => () => {
-    if (imagePreview) {
-      URL.revokeObjectURL(imagePreview);
+    for (const item of imageItemsRef.current) {
+      if (item.preview) URL.revokeObjectURL(item.preview);
     }
-  }, [imagePreview]);
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -45,14 +50,67 @@ export default function SupportReportModal({
 
   if (!isOpen) return null;
 
+  const clearImages = () => {
+    for (const item of imageItems) {
+      if (item.preview) URL.revokeObjectURL(item.preview);
+    }
+    setImageItems([]);
+  };
+
   const resetForm = () => {
     setCategory('การใช้งาน');
     setDescription('');
-    if (imagePreview) URL.revokeObjectURL(imagePreview);
-    setImageFile(null);
-    setImagePreview('');
+    clearImages();
     setError('');
     setSubmitted(false);
+  };
+
+  const handleSelectFiles = (fileList) => {
+    const incoming = Array.from(fileList || []);
+    if (!incoming.length) return;
+
+    const remainingSlots = MAX_SUPPORT_IMAGES - imageItems.length;
+    if (remainingSlots <= 0) {
+      setError(`แนบรูปภาพได้สูงสุด ${MAX_SUPPORT_IMAGES} รูปเท่านั้น`);
+      return;
+    }
+
+    const nextItems = [];
+    for (const file of incoming) {
+      if (nextItems.length >= remainingSlots) {
+        setError(`แนบรูปภาพได้สูงสุด ${MAX_SUPPORT_IMAGES} รูป (เลือกเพิ่มได้อีก ${remainingSlots} รูป)`);
+        break;
+      }
+      if (!ALLOWED_IMAGE_MIME_TYPES.includes(file.type)) {
+        setError('รองรับเฉพาะไฟล์รูปภาพ JPG, PNG หรือ WebP เท่านั้น');
+        continue;
+      }
+      if (file.size > MAX_IMAGE_SIZE_BYTES) {
+        setError('ขนาดรูปภาพแต่ละรูปต้องไม่เกิน 5 MB');
+        continue;
+      }
+      nextItems.push({
+        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        file,
+        preview: URL.createObjectURL(file),
+      });
+    }
+
+    if (nextItems.length > 0) {
+      if (incoming.length <= remainingSlots && nextItems.length === incoming.length) {
+        setError('');
+      }
+      setImageItems((prev) => [...prev, ...nextItems].slice(0, MAX_SUPPORT_IMAGES));
+    }
+  };
+
+  const handleRemoveImage = (id) => {
+    setImageItems((prev) => {
+      const target = prev.find((item) => item.id === id);
+      if (target?.preview) URL.revokeObjectURL(target.preview);
+      return prev.filter((item) => item.id !== id);
+    });
+    if (error) setError('');
   };
 
   return (
@@ -151,11 +209,9 @@ export default function SupportReportModal({
                 await submitSupportReport(currentUser, {
                   category,
                   description,
-                  imageFile,
+                  imageFiles: imageItems.map((item) => item.file),
                 });
-                if (imagePreview) URL.revokeObjectURL(imagePreview);
-                setImageFile(null);
-                setImagePreview('');
+                clearImages();
                 setDescription('');
                 setSubmitted(true);
               } catch (err) {
@@ -211,52 +267,59 @@ export default function SupportReportModal({
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <span className="text-xs font-bold text-slate-800">
-                3. แนบรูปภาพ <span className="font-normal text-slate-400">(ถ้ามี)</span>
-              </span>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-800">
+                  3. แนบรูปภาพ <span className="font-normal text-slate-400">(ถ้ามี)</span>
+                </span>
+                <span className="text-[11px] font-semibold text-slate-400">
+                  {imageItems.length}/{MAX_SUPPORT_IMAGES} รูป
+                </span>
+              </div>
               <input
                 ref={fileInputRef}
                 type="file"
                 accept="image/png,image/jpeg,image/webp"
+                multiple
                 hidden
                 onChange={(event) => {
-                  const file = event.target.files?.[0];
+                  handleSelectFiles(event.target.files);
                   event.target.value = '';
-                  if (!file) return;
-                  if (!ALLOWED_IMAGE_MIME_TYPES.includes(file.type)) {
-                    setError('รองรับเฉพาะไฟล์รูปภาพ JPG, PNG หรือ WebP เท่านั้น');
-                    return;
-                  }
-                  if (file.size > MAX_IMAGE_SIZE_BYTES) {
-                    setError('ขนาดรูปภาพต้องไม่เกิน 5 MB');
-                    return;
-                  }
-                  if (imagePreview) URL.revokeObjectURL(imagePreview);
-                  setError('');
-                  setImageFile(file);
-                  setImagePreview(URL.createObjectURL(file));
                 }}
               />
-              {imagePreview ? (
-                <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
-                  <img
-                    src={imagePreview}
-                    alt="รูปภาพประกอบการแจ้งปัญหา"
-                    className="max-h-44 w-full object-cover"
-                  />
-                  <button
-                    type="button"
-                    disabled={submitting}
-                    onClick={() => {
-                      if (imagePreview) URL.revokeObjectURL(imagePreview);
-                      setImageFile(null);
-                      setImagePreview('');
-                    }}
-                    aria-label="ลบรูปภาพ"
-                    className="absolute top-2 right-2 flex h-7 w-7 items-center justify-center rounded-full bg-slate-900/75 text-white transition-colors hover:bg-slate-900"
-                  >
-                    <X size={14} />
-                  </button>
+              {imageItems.length > 0 ? (
+                <div className="grid grid-cols-3 gap-2">
+                  {imageItems.map((item, idx) => (
+                    <div
+                      key={item.id}
+                      className="relative aspect-square overflow-hidden rounded-xl border border-slate-200 bg-slate-50"
+                    >
+                      <img
+                        src={item.preview}
+                        alt={`รูปภาพประกอบ ${idx + 1}`}
+                        className="h-full w-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        disabled={submitting}
+                        onClick={() => handleRemoveImage(item.id)}
+                        aria-label={`ลบรูปภาพ ${idx + 1}`}
+                        className="absolute top-1.5 right-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-slate-900/75 text-white transition-colors hover:bg-slate-900"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ))}
+                  {imageItems.length < MAX_SUPPORT_IMAGES && (
+                    <button
+                      type="button"
+                      disabled={submitting}
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex aspect-square flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-slate-300 bg-slate-50/70 p-2 text-[11px] font-semibold text-slate-600 transition-colors hover:border-[#e6007e] hover:bg-pink-50/30 hover:text-[#e6007e]"
+                    >
+                      <ImagePlus size={18} />
+                      <span>เพิ่มรูป</span>
+                    </button>
+                  )}
                 </div>
               ) : (
                 <button
@@ -266,7 +329,7 @@ export default function SupportReportModal({
                   className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50/70 px-3 py-3 text-xs font-semibold text-slate-600 transition-colors hover:border-[#e6007e] hover:bg-pink-50/30 hover:text-[#e6007e]"
                 >
                   <ImagePlus size={16} />
-                  <span>เลือกรูปภาพหน้าจอ (JPG, PNG, WebP ไม่เกิน 5 MB)</span>
+                  <span>เลือกรูปภาพหน้าจอ (สูงสุด {MAX_SUPPORT_IMAGES} รูป)</span>
                 </button>
               )}
             </div>

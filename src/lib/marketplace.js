@@ -159,8 +159,9 @@ export async function updateLineNotificationPreferences(userId, { enabled, categ
 }
 
 const SUPPORT_IMAGE_BUCKET = 'support-images';
+const MAX_SUPPORT_IMAGES = 5;
 
-export async function submitSupportReport(user, { category, description, imageFile }) {
+export async function submitSupportReport(user, { category, description, imageFiles = [], imageFile = null }) {
   if (!user?.id) throw new Error('กรุณาเข้าสู่ระบบก่อนส่งเรื่องแจ้งปัญหา');
   const trimmedDescription = String(description || '').trim();
   if (!trimmedDescription) throw new Error('กรุณาอธิบายปัญหาที่เกิดขึ้น');
@@ -169,30 +170,41 @@ export async function submitSupportReport(user, { category, description, imageFi
     throw new Error('กรุณาเลือกหัวข้อปัญหาให้ถูกต้อง');
   }
 
-  const client = requireSupabase();
-  let imageUrl = null;
+  const files = Array.isArray(imageFiles) && imageFiles.length > 0
+    ? imageFiles.slice(0, MAX_SUPPORT_IMAGES)
+    : imageFile
+    ? [imageFile]
+    : [];
 
-  if (imageFile) {
-    if (!ALLOWED_AVATAR_TYPES.includes(imageFile.type)) {
+  for (const file of files) {
+    if (!ALLOWED_AVATAR_TYPES.includes(file.type)) {
       throw new Error('รองรับเฉพาะไฟล์รูปภาพ JPG, PNG หรือ WebP เท่านั้น');
     }
-    if (imageFile.size > MAX_AVATAR_BYTES) {
-      throw new Error('ขนาดรูปภาพต้องไม่เกิน 5 MB');
-    }
-    const extension = imageFile.type === 'image/png' ? 'png' : imageFile.type === 'image/webp' ? 'webp' : 'jpg';
-    const imagePath = `${user.id}/${crypto.randomUUID()}.${extension}`;
-    const { data: uploadData, error: uploadError } = await client.storage
-      .from(SUPPORT_IMAGE_BUCKET)
-      .upload(imagePath, imageFile, {
-        cacheControl: '3600',
-        contentType: imageFile.type,
-        upsert: false,
-      });
-    if (uploadError) throw uploadError;
-    if (uploadData?.path) {
-      imageUrl = client.storage.from(SUPPORT_IMAGE_BUCKET).getPublicUrl(uploadData.path).data.publicUrl;
+    if (file.size > MAX_AVATAR_BYTES) {
+      throw new Error('ขนาดรูปภาพแต่ละรูปต้องไม่เกิน 5 MB');
     }
   }
+
+  const client = requireSupabase();
+  const uploadedUrls = await Promise.all(
+    files.map(async (file) => {
+      const extension = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
+      const imagePath = `${user.id}/${crypto.randomUUID()}.${extension}`;
+      const { data: uploadData, error: uploadError } = await client.storage
+        .from(SUPPORT_IMAGE_BUCKET)
+        .upload(imagePath, file, {
+          cacheControl: '3600',
+          contentType: file.type,
+          upsert: false,
+        });
+      if (uploadError) throw uploadError;
+      return uploadData?.path
+        ? client.storage.from(SUPPORT_IMAGE_BUCKET).getPublicUrl(uploadData.path).data.publicUrl
+        : null;
+    })
+  );
+
+  const imageUrls = uploadedUrls.filter(Boolean);
 
   const { data, error } = await client
     .from('support_reports')
@@ -203,9 +215,10 @@ export async function submitSupportReport(user, { category, description, imageFi
       reporter_student_id: user.studentId || '',
       category,
       description: trimmedDescription,
-      image_url: imageUrl,
+      image_url: imageUrls[0] || null,
+      image_urls: imageUrls,
     })
-    .select('id,category,description,image_url,status,created_at')
+    .select('id,category,description,image_url,image_urls,status,created_at')
     .single();
 
   if (error) throw error;
