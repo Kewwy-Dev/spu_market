@@ -117,7 +117,8 @@ export default function HomePage({
       <div className="mx-auto flex w-full max-w-7xl min-w-0 flex-1 flex-col gap-3.5 px-3.5 pt-3 pb-24 sm:px-6">
         {/* 4. Quick Actions */}
         <QuickActions
-          isSeller={currentUser?.role?.toLowerCase() === 'seller'}
+          isSeller={['seller', 'admin'].includes(currentUser?.role?.toLowerCase())}
+          isAdmin={currentUser?.role?.toLowerCase() === 'admin'}
           isLoggedIn={Boolean(currentUser)}
           onNavigateToRegister={onNavigateToRegister}
           onNavigateToLogin={() => onNavigateToLogin?.({ type: 'tab', tab: 'register' })}
@@ -153,7 +154,7 @@ export default function HomePage({
       </div>
 
       {/* 9. Floating Sell Button */}
-      {currentUser?.role?.toLowerCase() === 'seller' && (
+      {['seller', 'admin'].includes(currentUser?.role?.toLowerCase()) && (
         <FloatingSellButton onClick={() => onNavigateToAddProduct?.()} />
       )}
 

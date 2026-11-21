@@ -528,7 +528,8 @@ export default function ProfilePage({
     );
   };
 
-  const buyerActivities = activities.filter((item) => item.isBuyer);
+  const isAdmin = currentUser?.role?.toLowerCase() === 'admin';
+  const buyerActivities = isAdmin ? activities : activities.filter((item) => item.isBuyer);
 
   const buyerActivityCounts = {
     pending: buyerActivities.filter((item) => item.status === 'pending' || item.status === 'delivered').length,

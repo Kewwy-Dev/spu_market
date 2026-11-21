@@ -3,6 +3,7 @@ import { ShoppingBag, Store, ShieldCheck, Headset } from 'lucide-react';
 
 export default function QuickActions({
   isSeller = false,
+  isAdmin = false,
   isLoggedIn = false,
   onNavigateToRegister,
   onNavigateToLogin,
@@ -16,10 +17,14 @@ export default function QuickActions({
     onNavigateToRegister?.();
   };
 
+  const showSellerAction = isSeller || isAdmin;
+  const showRegisterAction = !isSeller || isAdmin;
+  const gridColsClass = showSellerAction && showRegisterAction ? 'grid-cols-4' : 'grid-cols-3';
+
   const cardClass = 'relative flex flex-col items-center gap-[3px] rounded-[14px] border border-slate-200 bg-slate-50 px-1 pt-2.5 pb-2 sm:py-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_4px_10px_rgba(0,0,0,0.05)]';
 
   return (
-    <div className="mt-0.5 grid grid-cols-3 gap-2 sm:gap-3">
+    <div className={`mt-0.5 grid ${gridColsClass} gap-2 sm:gap-3`}>
       {/* 1. ซื้อสินค้า */}
       <button type="button" className={cardClass} onClick={() => onActionSelect?.('buy')}>
         <div className="relative mb-0.5 flex h-[38px] w-[38px] items-center justify-center rounded-full bg-spu-pink text-white shadow-[0_2px_8px_rgba(230,0,126,0.3)]">
@@ -30,7 +35,7 @@ export default function QuickActions({
       </button>
 
       {/* 2. สำหรับผู้ขาย */}
-      {isSeller && (
+      {showSellerAction && (
         <button type="button" className={cardClass} onClick={() => onActionSelect?.('seller')}>
           <div className="relative mb-0.5 flex h-[38px] w-[38px] items-center justify-center rounded-full bg-sky-100 text-spu-blue">
             <Store size={20} strokeWidth={2.2} />
@@ -41,7 +46,7 @@ export default function QuickActions({
       )}
 
       {/* 3. ลงทะเบียน */}
-      {!isSeller && (
+      {showRegisterAction && (
         <button type="button" className={cardClass} onClick={handleRegisterClick}>
           <div className="relative mb-0.5 flex h-[38px] w-[38px] items-center justify-center rounded-full bg-green-100 text-spu-teal">
             <ShieldCheck size={20} strokeWidth={2.2} />

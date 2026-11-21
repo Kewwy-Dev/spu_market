@@ -446,7 +446,7 @@ export default function App() {
     }
     const executePendingAuthAction = async (pendingAction, mappedUser) => {
       if (!isMounted || !pendingAction || !mappedUser?.id) return;
-      const isSellerUser = mappedUser.role?.toLowerCase() === 'seller';
+      const isSellerUser = ['seller', 'admin'].includes(mappedUser.role?.toLowerCase());
 
       try {
         if (pendingAction.type === 'tab') {
@@ -644,7 +644,7 @@ export default function App() {
         }
         let registrationCompletedRedirect = false;
         if (registration.seller_registration_pending === true) {
-          if (profile.role === 'seller') {
+          if (profile.role === 'seller' || profile.role === 'admin') {
             if (registrationCameFromStorage) window.localStorage.removeItem(pendingRegistrationKey);
             await supabase.auth.updateUser({ data: { seller_registration_pending: false } });
           } else {
@@ -820,7 +820,7 @@ export default function App() {
   }, [activeTab]);
 
   useEffect(() => {
-    if (activeTab !== 'seller' || currentUser?.role?.toLowerCase() !== 'seller') return undefined;
+    if (activeTab !== 'seller' || !['seller', 'admin'].includes(currentUser?.role?.toLowerCase())) return undefined;
     let isCurrent = true;
     setSellerProductsLoading(!loadedSellerData.current.has(currentUser.id));
     setSellerProductsError('');
@@ -952,7 +952,8 @@ export default function App() {
   const handleSwitchToSeller = () => {
     if (!currentUser) {
       navigateToLogin({ type: 'tab', tab: 'seller' });
-    } else if (currentUser.role?.toLowerCase() === 'seller') {
+    } else if (['seller', 'admin'].includes(currentUser.role?.toLowerCase())) {
+      setSelectedSellerId(null);
       setActiveTab('seller');
     } else {
       if (window.location.pathname !== '/register') window.history.pushState({}, '', '/register');
@@ -1032,7 +1033,7 @@ export default function App() {
 
   const handleCreateProduct = async (productInput) => {
     if (!currentUser) throw new Error('Please sign in before listing a product.');
-    if (currentUser.role?.toLowerCase() !== 'seller') throw new Error('Verify as a seller before listing a product.');
+    if (!['seller', 'admin'].includes(currentUser.role?.toLowerCase())) throw new Error('Verify as a seller before listing a product.');
     if (editingProduct) {
       const product = await updateProduct(editingProduct.id, productInput, currentUser);
       setProducts((previous) => product.status === 'active'
