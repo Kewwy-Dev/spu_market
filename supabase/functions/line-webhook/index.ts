@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 async function verifyLineSignature(rawBody: string, signatureHeader: string, channelSecret: string): Promise<boolean> {

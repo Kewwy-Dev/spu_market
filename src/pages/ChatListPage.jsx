@@ -150,7 +150,7 @@ export default function ChatListPage({ currentUser, onSelectChat, onNavigateHome
               <ArrowLeft size={20} />
             </button>
             <h1 className="m-0 truncate text-base sm:text-lg font-bold tracking-[-0.2px] text-slate-900">
-              SPU Market Chats
+              แชท
             </h1>
           </div>
           <span className="shrink-0 rounded-full border border-spu-pink-border bg-spu-pink-light px-2.5 py-0.5 text-[0.7rem] font-bold text-pink-700 tabular-nums">
