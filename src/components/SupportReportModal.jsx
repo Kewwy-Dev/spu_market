@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   CheckCircle2,
+  Headset,
   ImagePlus,
-  LifeBuoy,
   Loader2,
   MessageCircle,
   Phone,
@@ -128,7 +128,7 @@ export default function SupportReportModal({
       >
         <div className="flex items-center gap-2.5">
           <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-teal-50 text-teal-600">
-            <LifeBuoy size={20} />
+            <Headset size={20} />
           </div>
           <div className="min-w-0 flex-1">
             <h3 id="support-report-modal-title" className="m-0 text-base font-extrabold text-slate-900">

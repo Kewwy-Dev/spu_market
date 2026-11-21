@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShoppingBag, Store, ShieldCheck, LifeBuoy } from 'lucide-react';
+import { ShoppingBag, Store, ShieldCheck, Headset } from 'lucide-react';
 
 export default function QuickActions({
   isSeller = false,
@@ -57,7 +57,7 @@ export default function QuickActions({
       {/* 4. ช่วยเหลือ */}
       <button type="button" className={cardClass} onClick={() => onActionSelect?.('help')}>
         <div className="relative mb-0.5 flex h-[38px] w-[38px] items-center justify-center rounded-full bg-purple-100 text-violet-600">
-          <LifeBuoy size={20} strokeWidth={2.2} />
+          <Headset size={20} strokeWidth={2.2} />
         </div>
         <span className="text-[0.74rem] sm:text-[0.8rem] font-bold text-slate-800">ช่วยเหลือ</span>
         <span className="text-[0.62rem] sm:text-[0.68rem] text-slate-500">แจ้งปัญหา</span>

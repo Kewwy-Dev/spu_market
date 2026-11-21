@@ -26,7 +26,7 @@ import {
   MapPin,
   MessageCircle,
   Truck,
-  LifeBuoy,
+  Headset,
   ShieldCheck,
   LogOut,
   ShoppingBag,
@@ -902,7 +902,7 @@ export default function ProfilePage({
           >
             <div className="flex flex-1 items-center gap-3">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-600">
-                <LifeBuoy size={17} />
+                <Headset size={17} />
               </div>
               <div>
                 <h4 className="m-0 text-sm font-bold text-slate-900">ศูนย์ช่วยเหลือ &amp; แจ้งปัญหาการซื้อขาย</h4>
