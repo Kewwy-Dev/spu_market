@@ -365,7 +365,7 @@ export default function SellerDashboardPage({
       {/* Floating feedback alert */}
       <AppToast toast={actionFeedback} onClose={() => setActionFeedback(null)} />
 
-      <div className="mx-auto grid w-full max-w-5xl gap-4 px-4 pt-4 pb-10 sm:px-6">
+      <div className="mx-auto grid w-full max-w-5xl min-w-0 gap-4 px-4 pt-4 pb-10 sm:px-6">
         {/* Profile Card */}
         <section className="overflow-hidden rounded-2xl border border-slate-200/80 border-t-4 border-t-[#d5117d] bg-white p-4 shadow-[0_3px_14px_rgba(37,49,77,0.03)] sm:p-5">
           <div className="flex items-center gap-3">
@@ -701,7 +701,7 @@ export default function SellerDashboardPage({
         )}
 
         {/* คลังสินค้าของร้าน */}
-        <section className="grid gap-3">
+        <section className="grid min-w-0 gap-3">
           <div className="flex items-center justify-between gap-2 pt-1">
             <div className="flex items-center gap-2 text-[#bf176e]">
               <Store size={18} />
@@ -763,7 +763,11 @@ export default function SellerDashboardPage({
             </div>
           ) : visibleProducts.length ? (
             /* Products List View */
-            <div className="scrollbar-none grid max-h-[500px] grid-cols-1 gap-3 overflow-y-auto md:grid-cols-2">
+            <div
+              className={`grid grid-cols-1 gap-3 md:grid-cols-2 ${
+                isOwner ? 'scrollbar-none -mx-1 max-h-[500px] overflow-y-auto px-1 py-1' : 'py-0.5'
+              }`}
+            >
               {visibleProducts.map((product) => {
                 const expiry = product.status === 'trash' ? trashExpiry(product.trashedAt) : null;
                 const statusBadgeMap = {
@@ -775,7 +779,7 @@ export default function SellerDashboardPage({
                 const statusBadgeBg = statusBadgeMap[product.status] || 'bg-[#13865f]';
                 return (
                   <article
-                    className={`flex items-stretch gap-2.5 overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-2.5 shadow-[0_3px_12px_rgba(37,49,77,0.03)] ${
+                    className={`flex min-w-0 items-start gap-3 overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 shadow-[0_3px_12px_rgba(37,49,77,0.03)] ${
                       !isOwner
                         ? 'cursor-pointer transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md'
                         : ''
