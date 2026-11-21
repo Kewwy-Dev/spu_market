@@ -204,6 +204,38 @@ export default function ChatRoomPage({ conversationId, currentUser, chatPartner,
     if (!isLoadingMessages && shouldStickToLatestRef.current) scrollContainerToBottom('smooth');
   }, [messages, isLoadingMessages]);
 
+  const [viewportStyle, setViewportStyle] = useState(() => {
+    if (typeof window === 'undefined' || !window.visualViewport) return null;
+    return {
+      top: window.visualViewport.offsetTop,
+      height: window.visualViewport.height,
+    };
+  });
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.visualViewport) return undefined;
+    const vv = window.visualViewport;
+    const syncViewport = () => {
+      setViewportStyle({
+        top: vv.offsetTop,
+        height: vv.height,
+      });
+      if (window.scrollY !== 0) {
+        window.scrollTo(0, 0);
+      }
+      if (shouldStickToLatestRef.current) {
+        window.requestAnimationFrame(() => scrollContainerToBottom('auto'));
+      }
+    };
+    syncViewport();
+    vv.addEventListener('resize', syncViewport);
+    vv.addEventListener('scroll', syncViewport);
+    return () => {
+      vv.removeEventListener('resize', syncViewport);
+      vv.removeEventListener('scroll', syncViewport);
+    };
+  }, []);
+
   const stopAutoScroll = () => {
     autoScrollingToLatestRef.current = false;
     window.clearTimeout(autoScrollTimerRef.current);
@@ -523,7 +555,10 @@ export default function ChatRoomPage({ conversationId, currentUser, chatPartner,
   } : null;
 
   return (
-    <div className="relative flex h-dvh w-full flex-col overflow-hidden bg-[#fff7fb] text-[#172033]">
+    <div
+      className="fixed inset-x-0 top-0 z-10 flex w-full flex-col overflow-hidden bg-[#fff7fb] text-[#172033]"
+      style={viewportStyle ? { top: `${viewportStyle.top}px`, height: `${viewportStyle.height}px` } : { height: '100dvh' }}
+    >
       <header className="z-20 w-full shrink-0 border-b border-pink-100 bg-white">
         <div className="mx-auto flex min-h-14 w-full max-w-4xl items-center justify-between gap-2.5 px-3.5 sm:px-6">
           <button
@@ -805,7 +840,7 @@ export default function ChatRoomPage({ conversationId, currentUser, chatPartner,
       {showScrollToLatest && (
         <button
           type="button"
-          className="fixed bottom-28 left-1/2 z-[6] grid h-[42px] w-[42px] -translate-x-1/2 place-items-center rounded-full border border-spu-pink-border bg-white/96 text-pink-700 shadow-[0_4px_14px_rgba(190,24,93,0.18)] hover:bg-spu-pink-light animate-[chat-scroll-latest-pop_180ms_ease-out_both]"
+          className="absolute bottom-24 left-1/2 z-[6] grid h-[42px] w-[42px] -translate-x-1/2 place-items-center rounded-full border border-spu-pink-border bg-white/96 text-pink-700 shadow-[0_4px_14px_rgba(190,24,93,0.18)] hover:bg-spu-pink-light animate-[chat-scroll-latest-pop_180ms_ease-out_both]"
           onClick={scrollToLatest}
           aria-label="เลื่อนไปยังข้อความล่าสุด"
           title="ข้อความล่าสุด"
