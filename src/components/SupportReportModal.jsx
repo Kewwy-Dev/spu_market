@@ -127,7 +127,7 @@ export default function SupportReportModal({
         aria-labelledby="support-report-modal-title"
       >
         <div className="flex items-center gap-2.5">
-          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-teal-50 text-teal-600">
+          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-purple-100 text-violet-600">
             <Headset size={20} />
           </div>
           <div className="min-w-0 flex-1">

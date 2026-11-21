@@ -901,7 +901,7 @@ export default function ProfilePage({
             onClick={() => setShowHelpModal(true)}
           >
             <div className="flex flex-1 items-center gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-600">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-purple-100 text-violet-600">
                 <Headset size={17} />
               </div>
               <div>
