@@ -3,7 +3,7 @@ import { ArrowLeft, Mail, ShieldCheck, Loader2 } from 'lucide-react';
 import OtpVerificationInput, { OTP_RESEND_COOLDOWN_SECONDS } from '../components/common/OtpVerificationInput';
 import { getSupabaseConfigError, supabase } from '../lib/supabase';
 import { isAllowedSpuEmail } from '../utils/validation';
-import { isInLiffClient, openExternalUrl } from '../lib/liff';
+import { isInLiffClient, openExternalUrl, tryAutoLoginWithLiff } from '../lib/liff';
 
 export default function LoginPage({ onBack, authError = '', onClearAuthError, onLoginSuccess, inLiff = false }) {
   const [email, setEmail] = useState('');
@@ -131,6 +131,25 @@ export default function LoginPage({ onBack, authError = '', onClearAuthError, on
       if (authError) throw authError;
     } catch (authError) {
       setError(authError.message || 'เข้าสู่ระบบด้วย Google ไม่สำเร็จ');
+      setIsLoading(false);
+    }
+  };
+
+  const handleLiffLogin = async () => {
+    setError('');
+    setNotice('');
+    onClearAuthError?.();
+    setIsLoading(true);
+    try {
+      const res = await tryAutoLoginWithLiff();
+      if (res?.linked && res?.user) {
+        onLoginSuccess?.(res.user);
+      } else {
+        setError('บัญชี LINE นี้ยังไม่ได้ผูกกับอีเมล SPU กรุณายืนยันอีเมลด้วยรหัส OTP ด้านบนก่อน');
+      }
+    } catch (liffError) {
+      setError(liffError?.message || 'เข้าสู่ระบบด้วย LINE ไม่สำเร็จ');
+    } finally {
       setIsLoading(false);
     }
   };
@@ -287,17 +306,27 @@ export default function LoginPage({ onBack, authError = '', onClearAuthError, on
             </div>
 
             {runningInLiff ? (
-              <div className="flex flex-col gap-2 rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 text-center">
-                <p className="text-[0.74rem] font-medium text-emerald-800">
-                  กำลังใช้งานผ่าน LINE: ยืนยันอีเมล SPU ด้วยรหัส OTP ด้านบนเพื่อผูกบัญชีอัตโนมัติ (ครั้งถัดไปจะเข้าสู่ระบบให้อัตโนมัติ)
-                </p>
+              <div className="flex flex-col gap-2.5">
                 <button
                   type="button"
-                  onClick={() => openExternalUrl(window.location.href)}
-                  className="text-[0.74rem] font-bold text-emerald-700 underline hover:text-emerald-900"
+                  disabled={isLoading}
+                  onClick={handleLiffLogin}
+                  className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-[#06C755] text-[0.84rem] font-bold text-white shadow-xs transition-all hover:bg-[#05b34c] disabled:cursor-not-allowed disabled:opacity-75"
                 >
-                  เปิดในเบราว์เซอร์ภายนอกเพื่อใช้ Google SSO
+                  <span>เข้าสู่ระบบด้วย LINE (บัญชีที่ผูกไว้)</span>
                 </button>
+                <div className="flex flex-col gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50/70 p-2.5 text-center">
+                  <p className="text-[0.72rem] font-medium text-emerald-800">
+                    หากยังไม่เคยผูกบัญชี กรุณายืนยันอีเมล SPU ด้วย OTP ด้านบนครั้งแรก
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => openExternalUrl(window.location.href)}
+                    className="text-[0.72rem] font-bold text-emerald-700 underline hover:text-emerald-900"
+                  >
+                    เปิดในเบราว์เซอร์ภายนอกเพื่อใช้ Google SSO
+                  </button>
+                </div>
               </div>
             ) : (
               <button

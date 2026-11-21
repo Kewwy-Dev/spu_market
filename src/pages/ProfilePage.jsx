@@ -75,6 +75,7 @@ export default function ProfilePage({
     typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('tab') === 'favorites'
   ));
   const [favoritesCount, setFavoritesCount] = useState(0);
+  const [showLineModal, setShowLineModal] = useState(false);
   const [lineActionLoading, setLineActionLoading] = useState(false);
   const [lineActionError, setLineActionError] = useState('');
   const [lineFriendFlag, setLineFriendFlag] = useState(null);
@@ -932,160 +933,251 @@ export default function ProfilePage({
               <ChevronRight size={16} />
             </div>
           </button>
-        </div>
 
-        {/* 4.5 LINE OA Connection & Notifications */}
-        {currentUser && (
-          <section className="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_4px_16px_rgba(0,0,0,0.04)] lg:col-span-5">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2.5">
+          {currentUser && (
+            <button
+              type="button"
+              className="flex w-full items-center justify-between border-t border-slate-50 px-4 py-3 text-left transition-colors hover:bg-slate-50 sm:col-span-2 lg:col-span-1"
+              onClick={() => {
+                setLineActionError('');
+                setShowLineModal(true);
+              }}
+            >
+              <div className="flex flex-1 items-center gap-3">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
                   <Bell size={17} />
                 </div>
                 <div>
-                  <h4 className="m-0 text-sm font-extrabold text-slate-900">
+                  <h4 className="m-0 text-sm font-bold text-slate-900">
                     การเชื่อมต่อ LINE OA &amp; แจ้งเตือน
                   </h4>
                   <p className="m-0 text-[11px] text-slate-500">
-                    รับแจ้งเตือนแชท นัดรับสินค้า และรีวิวผ่าน LINE
+                    ตั้งค่าการผูกบัญชีและเปิด/ปิดแจ้งเตือนแต่ละหัวข้อ
                   </p>
                 </div>
               </div>
-              {currentUser.lineUserId ? (
-                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
-                  <CheckCircle2 size={12} />
-                  ผูกแล้ว
-                </span>
-              ) : (
-                <span className="inline-flex shrink-0 items-center rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500">
-                  ยังไม่ผูก
-                </span>
-              )}
-            </div>
-
-            {lineActionError && (
-              <p className="m-0 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700" role="alert">
-                {lineActionError}
-              </p>
-            )}
-
-            {currentUser.lineUserId ? (
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5">
-                  <div className="min-w-0">
-                    <p className="m-0 truncate text-xs font-bold text-slate-800">
-                      บัญชี LINE: {currentUser.lineDisplayName || 'เชื่อมต่อแล้ว'}
-                    </p>
-                    <p className="m-0 text-[11px] text-slate-500">
-                      เข้าใช้งานผ่าน LINE OA ได้อัตโนมัติ
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    disabled={lineActionLoading}
-                    onClick={handleUnlinkLine}
-                    className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-600 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:opacity-60"
-                  >
-                    <Unlink size={12} />
-                    <span>ยกเลิก</span>
-                  </button>
-                </div>
-
-                {lineFriendFlag === false && getLineOaUrl() && (
-                  <button
-                    type="button"
-                    onClick={() => openExternalUrl(getLineOaUrl())}
-                    className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 transition-colors hover:bg-emerald-100"
-                  >
-                    <ExternalLink size={14} />
-                    <span>เพิ่มเพื่อน LINE OA เพื่อรับแจ้งเตือน</span>
-                  </button>
-                )}
-
-                <div className="flex items-center justify-between gap-2 pt-1">
-                  <span className="text-xs font-bold text-slate-800">
-                    เปิดรับแจ้งเตือนเข้า LINE
+              <div className="flex shrink-0 items-center gap-1.5 text-slate-400">
+                {currentUser.lineUserId ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
+                    <CheckCircle2 size={11} />
+                    ผูกแล้ว
                   </span>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={currentUser.lineNotifyEnabled !== false}
-                    disabled={lineActionLoading}
-                    onClick={() => handleToggleLineNotify(currentUser.lineNotifyEnabled === false)}
-                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors disabled:opacity-60 ${
-                      currentUser.lineNotifyEnabled !== false ? 'bg-emerald-500' : 'bg-slate-300'
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        currentUser.lineNotifyEnabled !== false ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    />
-                  </button>
-                </div>
+                ) : (
+                  <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-500">
+                    ยังไม่ผูก
+                  </span>
+                )}
+                <ChevronRight size={16} />
+              </div>
+            </button>
+          )}
+        </div>
 
-                {currentUser.lineNotifyEnabled !== false && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {[
-                      { key: 'chat', label: 'แชทใหม่' },
-                      { key: 'pickup', label: 'นัดรับสินค้า' },
-                      { key: 'review', label: 'รีวิวผู้ขาย' },
-                    ].map(({ key, label }) => {
-                      const active = currentUser.lineNotifyCategories?.[key] !== false;
-                      return (
-                        <button
-                          key={key}
-                          type="button"
-                          disabled={lineActionLoading}
-                          onClick={() => handleToggleLineCategory(key)}
-                          className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-[11px] font-bold transition-colors disabled:opacity-60 ${
-                            active
-                              ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                              : 'border-slate-200 bg-slate-50 text-slate-400'
+        {/* 4.5 LINE OA Connection & Notifications Modal */}
+        {currentUser && showLineModal && (
+          <div
+            className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="line-settings-modal-title"
+            onClick={() => setShowLineModal(false)}
+          >
+            <div
+              className="flex max-h-[90dvh] w-full max-w-md flex-col overflow-hidden rounded-3xl bg-white shadow-2xl"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                    <Bell size={18} />
+                  </div>
+                  <div>
+                    <h3 id="line-settings-modal-title" className="m-0 text-sm font-extrabold text-slate-900">
+                      การเชื่อมต่อ LINE OA &amp; แจ้งเตือน
+                    </h3>
+                    <p className="m-0 text-[11px] text-slate-500">
+                      จัดการบัญชี LINE และเลือกหมวดหมู่แจ้งเตือน
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowLineModal(false)}
+                  aria-label="ปิดหน้าต่างตั้งค่า LINE"
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-800"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-4 overflow-y-auto p-5">
+                {lineActionError && (
+                  <p className="m-0 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700" role="alert">
+                    {lineActionError}
+                  </p>
+                )}
+
+                {currentUser.lineUserId ? (
+                  <>
+                    <div className="flex items-center justify-between gap-2 rounded-2xl border border-emerald-100 bg-emerald-50/50 px-3.5 py-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <CheckCircle2 size={14} className="shrink-0 text-emerald-600" />
+                          <p className="m-0 truncate text-xs font-bold text-slate-800">
+                            {currentUser.lineDisplayName || 'เชื่อมต่อบัญชี LINE แล้ว'}
+                          </p>
+                        </div>
+                        <p className="m-0 mt-0.5 text-[11px] text-slate-500">
+                          เข้าใช้งานผ่าน LINE OA ได้อัตโนมัติ
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={lineActionLoading}
+                        onClick={handleUnlinkLine}
+                        className="inline-flex shrink-0 items-center gap-1 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-600 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:opacity-60"
+                      >
+                        <Unlink size={12} />
+                        <span>ยกเลิกผูก</span>
+                      </button>
+                    </div>
+
+                    {lineFriendFlag === false && getLineOaUrl() && (
+                      <button
+                        type="button"
+                        onClick={() => openExternalUrl(getLineOaUrl())}
+                        className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-xs font-bold text-emerald-700 transition-colors hover:bg-emerald-100"
+                      >
+                        <ExternalLink size={14} />
+                        <span>เพิ่มเพื่อน LINE OA เพื่อรับแจ้งเตือน</span>
+                      </button>
+                    )}
+
+                    <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-slate-50/70 px-4 py-3">
+                      <div>
+                        <p className="m-0 text-xs font-extrabold text-slate-900">
+                          เปิดรับแจ้งเตือนเข้า LINE
+                        </p>
+                        <p className="m-0 text-[11px] text-slate-500">
+                          สวิตช์หลักสำหรับรับข้อความแจ้งเตือนจาก LINE OA
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={currentUser.lineNotifyEnabled !== false}
+                        disabled={lineActionLoading}
+                        onClick={() => handleToggleLineNotify(currentUser.lineNotifyEnabled === false)}
+                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors disabled:opacity-60 ${
+                          currentUser.lineNotifyEnabled !== false ? 'bg-emerald-500' : 'bg-slate-300'
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            currentUser.lineNotifyEnabled !== false ? 'translate-x-6' : 'translate-x-1'
                           }`}
-                        >
-                          {active && <CheckCircle2 size={11} />}
-                          <span>{label}</span>
-                        </button>
-                      );
-                    })}
+                        />
+                      </button>
+                    </div>
+
+                    <div className="flex flex-col divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
+                      {[
+                        {
+                          key: 'chat',
+                          label: 'แชทใหม่',
+                          description: 'แจ้งเตือนเมื่อมีข้อความใหม่จากผู้ซื้อหรือผู้ขาย',
+                          icon: MessageCircle,
+                          iconBg: 'bg-pink-50 text-[#e6007e]',
+                        },
+                        {
+                          key: 'pickup',
+                          label: 'นัดรับสินค้า',
+                          description: 'แจ้งเตือนคำขอนัดรับ เลื่อนเวลา ส่งมอบ และรับสินค้า',
+                          icon: Truck,
+                          iconBg: 'bg-teal-50 text-teal-600',
+                        },
+                        {
+                          key: 'review',
+                          label: 'รีวิวผู้ขาย',
+                          description: 'แจ้งเตือนเมื่อผู้ซื้อให้คะแนนและรีวิวร้านค้าของคุณ',
+                          icon: ShieldCheck,
+                          iconBg: 'bg-amber-50 text-amber-600',
+                        },
+                      ].map(({ key, label, description, icon: Icon, iconBg }) => {
+                        const masterEnabled = currentUser.lineNotifyEnabled !== false;
+                        const categoryEnabled = currentUser.lineNotifyCategories?.[key] !== false;
+                        const active = masterEnabled && categoryEnabled;
+                        return (
+                          <div key={key} className="flex items-center justify-between gap-3 px-4 py-3">
+                            <div className="flex min-w-0 items-center gap-3">
+                              <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${iconBg}`}>
+                                <Icon size={17} />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="m-0 text-xs font-bold text-slate-900">{label}</p>
+                                <p className="m-0 text-[11px] leading-snug text-slate-500">{description}</p>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              role="switch"
+                              aria-checked={active}
+                              disabled={lineActionLoading || !masterEnabled}
+                              onClick={() => handleToggleLineCategory(key)}
+                              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                                active ? 'bg-emerald-500' : 'bg-slate-300'
+                              }`}
+                            >
+                              <span
+                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                  active ? 'translate-x-6' : 'translate-x-1'
+                                }`}
+                              />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex flex-col gap-2.5">
+                    <p className="m-0 text-xs leading-relaxed text-slate-600">
+                      ผูกบัญชี SPU Market ของคุณกับ LINE เพื่อรับแจ้งเตือนแชท นัดรับสินค้า และรีวิวผ่าน LINE OA และเข้าใช้งานได้รวดเร็วขึ้น
+                    </p>
+                    {isLiffConfigured() ? (
+                      <button
+                        type="button"
+                        disabled={lineActionLoading}
+                        onClick={handleLinkLine}
+                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#06C755] px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-all hover:bg-[#05b34c] disabled:opacity-60"
+                      >
+                        {lineActionLoading ? (
+                          <Loader2 size={15} className="animate-spin" />
+                        ) : (
+                          <Link2 size={15} />
+                        )}
+                        <span>ผูกบัญชีกับ LINE เพื่อรับแจ้งเตือน</span>
+                      </button>
+                    ) : (
+                      <p className="m-0 rounded-xl bg-slate-50 px-3 py-2 text-[11px] text-slate-500">
+                        เปิดใช้งานผ่าน LINE OA หรือตั้งค่า <code className="rounded bg-slate-100 px-1 py-0.5">VITE_LIFF_ID</code> เพื่อผูกบัญชี LINE
+                      </p>
+                    )}
+                    {getLineOaUrl() && (
+                      <button
+                        type="button"
+                        onClick={() => openExternalUrl(getLineOaUrl())}
+                        className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-100"
+                      >
+                        <ExternalLink size={13} />
+                        <span>เปิด LINE OA ของ SPU Market</span>
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {isLiffConfigured() ? (
-                  <button
-                    type="button"
-                    disabled={lineActionLoading}
-                    onClick={handleLinkLine}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#06C755] px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-all hover:bg-[#05b34c] disabled:opacity-60"
-                  >
-                    {lineActionLoading ? (
-                      <Loader2 size={15} className="animate-spin" />
-                    ) : (
-                      <Link2 size={15} />
-                    )}
-                    <span>ผูกบัญชีกับ LINE เพื่อรับแจ้งเตือน</span>
-                  </button>
-                ) : (
-                  <p className="m-0 text-[11px] text-slate-500">
-                    เปิดใช้งานผ่าน LINE OA หรือตั้งค่า <code className="rounded bg-slate-100 px-1 py-0.5">VITE_LIFF_ID</code> เพื่อผูกบัญชี LINE
-                  </p>
-                )}
-                {getLineOaUrl() && (
-                  <button
-                    type="button"
-                    onClick={() => openExternalUrl(getLineOaUrl())}
-                    className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-100"
-                  >
-                    <ExternalLink size={13} />
-                    <span>เปิด LINE OA ของ SPU Market</span>
-                  </button>
-                )}
-              </div>
-            )}
-          </section>
+            </div>
+          </div>
         )}
 
         {/* 5. Footer & Logout */}

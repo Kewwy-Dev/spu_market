@@ -34,6 +34,7 @@ const PENDING_AUTH_ACTION_KEY = 'spu-market-pending-auth-action';
 const PENDING_AUTH_ACTION_TTL_MS = 30 * 60 * 1000;
 const LAST_ACTIVE_AT_KEY = 'spu-market-last-active-at';
 const SESSION_INACTIVITY_LIMIT_MS = 7 * 24 * 60 * 60 * 1000;
+const LINE_AUTOLOGIN_DISABLED_KEY = 'spu-market-line-autologin-disabled';
 
 function readLastActiveAt() {
   if (typeof window === 'undefined') return null;
@@ -684,6 +685,11 @@ export default function App() {
           }
         }
         if (isMounted && syncId === userSyncId) {
+          try {
+            window.localStorage.removeItem(LINE_AUTOLOGIN_DISABLED_KEY);
+          } catch {
+            // Ignore storage errors
+          }
           let mappedUser = mapAuthUser(authUser, profile);
           setCurrentUser(mappedUser);
           if (authEvent === 'SIGNED_IN' && isInLiffClient() && !profile?.line_user_id) {
@@ -738,8 +744,14 @@ export default function App() {
       if (isMounted) void syncUser(sessionUser);
       if (!sessionUser && !liffAutoLoginAttempted.current) {
         liffAutoLoginAttempted.current = true;
+        let autoLoginDisabled = false;
+        try {
+          autoLoginDisabled = window.localStorage.getItem(LINE_AUTOLOGIN_DISABLED_KEY) === '1';
+        } catch {
+          autoLoginDisabled = false;
+        }
         const liffState = await liffInitPromise;
-        if (isMounted && liffState?.initialized && liffState?.loggedIn) {
+        if (!autoLoginDisabled && isMounted && liffState?.initialized && liffState?.loggedIn) {
           try {
             await tryAutoLoginWithLiff();
           } catch (liffLoginError) {
@@ -928,6 +940,11 @@ export default function App() {
     }
     clearLastActiveAt();
     savePendingAuthAction(null);
+    try {
+      window.localStorage.setItem(LINE_AUTOLOGIN_DISABLED_KEY, '1');
+    } catch {
+      // Ignore storage errors
+    }
     setCurrentUser(null);
     setActiveTab('home');
   };
