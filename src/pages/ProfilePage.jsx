@@ -116,33 +116,27 @@ export default function ProfilePage({
   };
 
   const handleToggleLineNotify = async (nextEnabled) => {
-    if (!onUpdateLineNotify || lineActionLoading) return;
+    if (!onUpdateLineNotify) return;
     setLineActionError('');
-    setLineActionLoading(true);
     try {
       await onUpdateLineNotify({ enabled: nextEnabled });
     } catch (err) {
       setLineActionError(err?.message || 'บันทึกการตั้งค่าไม่สำเร็จ');
-    } finally {
-      setLineActionLoading(false);
     }
   };
 
   const handleToggleLineCategory = async (categoryKey) => {
-    if (!onUpdateLineNotify || lineActionLoading) return;
+    if (!onUpdateLineNotify) return;
     const currentCategories = currentUser?.lineNotifyCategories || { chat: true, pickup: true, review: true };
     const nextCategories = {
       ...currentCategories,
       [categoryKey]: currentCategories[categoryKey] === false,
     };
     setLineActionError('');
-    setLineActionLoading(true);
     try {
       await onUpdateLineNotify({ categories: nextCategories });
     } catch (err) {
       setLineActionError(err?.message || 'บันทึกหมวดหมู่แจ้งเตือนไม่สำเร็จ');
-    } finally {
-      setLineActionLoading(false);
     }
   };
 
@@ -949,11 +943,8 @@ export default function ProfilePage({
                 </div>
                 <div>
                   <h4 className="m-0 text-sm font-bold text-slate-900">
-                    การเชื่อมต่อ LINE OA &amp; แจ้งเตือน
+                    การเชื่อมต่อ LINE &amp; แจ้งเตือน
                   </h4>
-                  <p className="m-0 text-[11px] text-slate-500">
-                    ตั้งค่าการผูกบัญชีและเปิด/ปิดแจ้งเตือนแต่ละหัวข้อ
-                  </p>
                 </div>
               </div>
               <div className="flex shrink-0 items-center gap-1.5 text-slate-400">
@@ -1058,22 +1049,18 @@ export default function ProfilePage({
                         <p className="m-0 text-xs font-extrabold text-slate-900">
                           เปิดรับแจ้งเตือนเข้า LINE
                         </p>
-                        <p className="m-0 text-[11px] text-slate-500">
-                          สวิตช์หลักสำหรับรับข้อความแจ้งเตือนจาก LINE OA
-                        </p>
                       </div>
                       <button
                         type="button"
                         role="switch"
                         aria-checked={currentUser.lineNotifyEnabled !== false}
-                        disabled={lineActionLoading}
                         onClick={() => handleToggleLineNotify(currentUser.lineNotifyEnabled === false)}
-                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors disabled:opacity-60 ${
+                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 ease-out active:scale-95 ${
                           currentUser.lineNotifyEnabled !== false ? 'bg-emerald-500' : 'bg-slate-300'
                         }`}
                       >
                         <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
                             currentUser.lineNotifyEnabled !== false ? 'translate-x-6' : 'translate-x-1'
                           }`}
                         />
@@ -1085,7 +1072,7 @@ export default function ProfilePage({
                         {
                           key: 'chat',
                           label: 'แชทใหม่',
-                          description: 'แจ้งเตือนเมื่อมีข้อความใหม่จากผู้ซื้อหรือผู้ขาย',
+                          description: 'แจ้งเตือนเมื่อมีข้อความใหม่',
                           icon: MessageCircle,
                           iconBg: 'bg-pink-50 text-[#e6007e]',
                         },
@@ -1122,14 +1109,14 @@ export default function ProfilePage({
                               type="button"
                               role="switch"
                               aria-checked={active}
-                              disabled={lineActionLoading || !masterEnabled}
+                              disabled={!masterEnabled}
                               onClick={() => handleToggleLineCategory(key)}
-                              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 ease-out active:scale-95 disabled:cursor-not-allowed disabled:opacity-45 ${
                                 active ? 'bg-emerald-500' : 'bg-slate-300'
                               }`}
                             >
                               <span
-                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
                                   active ? 'translate-x-6' : 'translate-x-1'
                                 }`}
                               />

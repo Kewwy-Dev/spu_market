@@ -1246,16 +1246,44 @@ export default function App() {
             }}
             onUpdateLineNotify={async ({ enabled, categories }) => {
               if (!currentUser?.id) throw new Error('กรุณาเข้าสู่ระบบก่อนตั้งค่าการแจ้งเตือน');
-              const updated = await updateLineNotificationPreferences(currentUser.id, { enabled, categories });
+              const prevEnabled = currentUser.lineNotifyEnabled;
+              const prevCategories = currentUser.lineNotifyCategories;
+
+              // Optimistic UI update so switches animate immediately
               setCurrentUser((prev) => (
                 prev
                   ? {
                       ...prev,
-                      lineNotifyEnabled: updated.line_notify_enabled !== false,
-                      lineNotifyCategories: updated.line_notify_categories || prev.lineNotifyCategories,
+                      ...(typeof enabled === 'boolean' ? { lineNotifyEnabled: enabled } : {}),
+                      ...(categories ? { lineNotifyCategories: categories } : {}),
                     }
                   : prev
               ));
+
+              try {
+                const updated = await updateLineNotificationPreferences(currentUser.id, { enabled, categories });
+                setCurrentUser((prev) => (
+                  prev
+                    ? {
+                        ...prev,
+                        lineNotifyEnabled: updated.line_notify_enabled !== false,
+                        lineNotifyCategories: updated.line_notify_categories || prev.lineNotifyCategories,
+                      }
+                    : prev
+                ));
+              } catch (err) {
+                // Rollback if request fails
+                setCurrentUser((prev) => (
+                  prev
+                    ? {
+                        ...prev,
+                        lineNotifyEnabled: prevEnabled,
+                        lineNotifyCategories: prevCategories,
+                      }
+                    : prev
+                ));
+                throw err;
+              }
             }}
             onUpdateProfile={async ({ displayName, faculty, major, contact, avatarFile }) => {
               if (!currentUser?.id) throw new Error('กรุณาเข้าสู่ระบบก่อนแก้ไขโปรไฟล์');
