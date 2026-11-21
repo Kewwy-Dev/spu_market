@@ -154,7 +154,7 @@ Deno.serve(async (req) => {
 
       if (reporterProfile?.line_user_id) {
         const ackMessage =
-          `แอดมินได้รับเรื่องเรียบร้อยแล้ว กำลังตรวจสอบเพื่อแก้ไขปัญหาที่เกิดขึ้น ขอบคุณที่แจ้งปัญหาเข้ามา\n\n(รหัสเรื่อง #${shortId} • หัวข้อ: ${report.category})`;
+          `(รหัสเรื่อง #${shortId} • หัวข้อ: ${report.category})\nแอดมินได้รับเรื่องเรียบร้อยแล้ว กำลังตรวจสอบเพื่อแก้ไขปัญหาที่เกิดขึ้น ขอบคุณที่แจ้งปัญหาเข้ามา`;
         const pushed = await pushLineText(lineAccessToken, reporterProfile.line_user_id, ackMessage);
         if (pushed) {
           await replyLineMessage(
