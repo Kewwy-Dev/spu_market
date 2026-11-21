@@ -675,11 +675,11 @@ export default function ChatRoomPage({ conversationId, currentUser, chatPartner,
         onScroll={handleMessagesScroll}
         onWheel={stopAutoScroll}
         onTouchStart={stopAutoScroll}
-        className="mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col gap-1.5 overflow-y-auto px-3.5 py-3.5 sm:px-6"
+        className="mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col gap-3 overflow-y-auto px-3.5 py-4 sm:px-6"
       >
         <SkeletonReveal
           loading={isLoadingMessages}
-          className="chat-message-skeleton-wrap"
+          className="chat-message-skeleton-wrap flex flex-col gap-3"
           skeleton={
             <div className="chat-message-skeleton" aria-hidden="true">
               {[0, 1, 2, 3].map((item) => (
