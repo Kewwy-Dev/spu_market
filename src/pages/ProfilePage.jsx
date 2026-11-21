@@ -984,7 +984,7 @@ export default function ProfilePage({
                   </div>
                   <div>
                     <h3 id="line-settings-modal-title" className="m-0 text-sm font-extrabold text-slate-900">
-                      การเชื่อมต่อ LINE OA &amp; แจ้งเตือน
+                      การเชื่อมต่อ LINE &amp; แจ้งเตือน
                     </h3>
                     <p className="m-0 text-[11px] text-slate-500">
                       จัดการบัญชี LINE และเลือกหมวดหมู่แจ้งเตือน
