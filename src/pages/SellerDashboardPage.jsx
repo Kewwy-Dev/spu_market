@@ -608,7 +608,8 @@ export default function SellerDashboardPage({
             </div>
 
             {visibleTransactions.length ? (
-              <div className="scrollbar-none grid max-h-[520px] grid-cols-1 gap-3 overflow-y-auto md:grid-cols-2">
+              <div className="scrollbar-none max-h-[520px] overflow-y-auto py-0.5">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 {visibleTransactions.map((tx) => {
                   let badgeClasses = 'border-amber-300 bg-amber-50 text-amber-800';
                   let statusText = 'รอนัดรับ';
@@ -703,6 +704,7 @@ export default function SellerDashboardPage({
                     </article>
                   );
                 })}
+                </div>
               </div>
             ) : (
               <div className="grid justify-items-center gap-2 rounded-2xl border border-slate-200/80 bg-white px-4 py-8 text-center text-xs text-slate-500">
@@ -780,10 +782,11 @@ export default function SellerDashboardPage({
           ) : visibleProducts.length ? (
             /* Products List View */
             <div
-              className={`grid grid-cols-1 gap-3 md:grid-cols-2 ${
+              className={
                 isOwner ? 'scrollbar-none -mx-1 max-h-[500px] overflow-y-auto px-1 py-1' : 'py-0.5'
-              }`}
+              }
             >
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               {visibleProducts.map((product) => {
                 const expiry = product.status === 'trash' ? trashExpiry(product.trashedAt) : null;
                 const statusBadgeMap = {
@@ -925,6 +928,7 @@ export default function SellerDashboardPage({
                   </article>
                 );
               })}
+              </div>
             </div>
           ) : (
             <div className="grid justify-items-center gap-2 rounded-2xl border border-slate-200/80 bg-white px-4 py-8 text-center text-xs text-slate-500">
